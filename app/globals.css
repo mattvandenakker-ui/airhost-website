@@ -696,3 +696,32 @@
 .tracking-strip .info { flex: 1; }
 .tracking-strip .t { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13.5px; color: var(--ocean); }
 .tracking-strip .s { font-size: 12px; color: var(--ocean-700); opacity: 0.8; }
+
+/* ── Bag mix stack (new bags step) ── */
+.bag-mix-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.bag-mix-row { background: #fff; border: 1.5px solid var(--navy-08); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; transition: border-color .2s ease, background .2s ease; }
+.bag-mix-row.active { border-color: var(--ocean); background: var(--ocean-50); }
+.bag-mix-ic { width: 48px; height: 48px; border-radius: 12px; background: var(--navy-04); color: var(--navy-50); display: grid; place-items: center; flex-shrink: 0; transition: background .2s ease, color .2s ease; }
+.bag-mix-row.active .bag-mix-ic { background: #fff; color: var(--ocean); }
+.bag-mix-info { flex: 1; min-width: 0; }
+.bag-mix-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 15px; color: var(--navy); line-height: 1.2; }
+.bag-mix-sub { font-size: 12.5px; color: var(--navy-50); margin-top: 2px; }
+.bag-mix-row .counter-controls { flex-shrink: 0; }
+.bag-mix-summary { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--navy-04); border-radius: 12px; margin-bottom: 22px; font-size: 13px; color: var(--navy-50); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; }
+.bag-mix-summary strong { color: var(--navy); font-size: 15px; }
+
+/* ── Hours dropdown (storage when step) ── */
+.hours-dropdown-wrap { position: relative; margin-bottom: 18px; }
+.hours-dropdown { appearance: none; -webkit-appearance: none; width: 100%; height: 56px; padding: 0 48px 0 18px; border-radius: 14px; border: 1.5px solid var(--navy-12); background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 16px; color: var(--navy); cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.hours-dropdown:hover { border-color: var(--ocean); }
+.hours-dropdown:focus { outline: none; border-color: var(--ocean); box-shadow: 0 0 0 4px rgba(26,86,219,0.12); }
+.hours-dropdown-caret { position: absolute; right: 18px; top: 50%; transform: translateY(-50%) rotate(90deg); color: var(--ocean); pointer-events: none; }
+
+/* ── Service area notice (WhereDoor) ── */
+.service-area-note { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; padding: 12px 14px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.22); border-radius: 12px; font-size: 12.5px; color: #92400e; line-height: 1.45; }
+.service-area-note svg { flex-shrink: 0; margin-top: 2px; color: #b45309; }
+
+/* ── Suggestions enhancements ── */
+.suggestions-header { padding: 10px 14px 6px; font-size: 11px; color: var(--navy-50); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: var(--navy-04); border-bottom: 1px solid var(--navy-08); }
+.suggestion.out-of-area .ic { background: rgba(245,158,11,0.12); color: #b45309; }
+.oos-tag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: rgba(245,158,11,0.14); color: #b45309; font-size: 10px; font-weight: 600; letter-spacing: 0.02em; vertical-align: middle; }

@@ -3,18 +3,21 @@
 import { useState, useMemo, useEffect, useRef, ReactNode } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+type SizeId = 'S' | 'M' | 'L'
 interface ServiceData { id: string; title: string; desc: string; badge: string | null; icon: ReactNode; hours: string; color: string; colorBg: string; base: number; unit: string }
 interface FacilityData { id: string; name: string; addr: string; hours: string; distance: string; availability: 'high' | 'low'; icon: ReactNode }
 interface LockerData { id: string; name: string; addr: string; hours: string; available: number; total: number; icon: ReactNode }
 interface SpecialItem { id: string; label: string; sub: string; price: number; icon: ReactNode }
-interface SizeData { id: string; label: string; lim: string }
+interface SizeData { id: SizeId; label: string; lim: string }
 interface DurationData { id: string; label: string; sub: string; hours: number; icon: ReactNode }
 interface PriceLine { label: string; amount: number; discount?: boolean }
 interface Details { name: string; phone: string; email: string; whatsapp: boolean; airline: string; flight: string }
+interface Bags { S: number; M: number; L: number }
+interface LocationData { name: string; addr: string; area?: string; outOfArea?: boolean }
 interface BookingState {
   service: string; pickup: string; dropoff: string; facility: string; locker: string
   direction: 'to' | 'from'; date: Date; time: string; endDate: Date; endTime: string
-  duration: string; bagCount: number; size: string; extras: string[]
+  duration: string; bags: Bags; hours: number; extras: string[]
   details: Details; recipient: { name: string; phone: string }; insurance: boolean
 }
 
@@ -49,20 +52,21 @@ const Ico = {
   Departure:({ n = 18 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M22 12.5a1.5 1.5 0 01-2 1.4L4 9V4l3 1 3 4 6.5-1.8a2 2 0 012.4 1.4z"/></svg>,
   Arrival:  ({ n = 18 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M3 12.5a1.5 1.5 0 002 1.4L21 9V4l-3 1-3 4-6.5-1.8a2 2 0 00-2.4 1.4z"/></svg>,
   User:     ({ n = 16 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>,
+  ChevDown: ({ n = 12 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>,
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const SERVICES: ServiceData[] = [
-  { id: 'storage', title: 'Luggage Storage',       desc: 'Secure storage by the hour or day at our Umhlanga facility.', badge: null,      icon: <Ico.Box />,   hours: '07:00 – 21:00', color: 'var(--ocean)', colorBg: 'var(--ocean-50)', base: 45,  unit: 'per bag / day' },
-  { id: 'door',    title: 'Door-to-Door Delivery', desc: 'Hotel to Airbnb, Airbnb to villa — same-day routed delivery.', badge: 'Popular', icon: <Ico.Home />,  hours: '08:00 – 18:00', color: 'var(--sky)',   colorBg: 'var(--sky-50)',   base: 165, unit: 'per bag delivered' },
-  { id: 'airport', title: 'King Shaka Transfer',   desc: 'Synced to your flight — pickup from any KZN address.', badge: 'New',         icon: <Ico.Plane />, hours: '05:00 – 22:00', color: 'var(--deep)', colorBg: 'var(--deep-50)',  base: 295, unit: 'per trip' },
-  { id: 'beach',   title: 'Beach Day Storage',     desc: 'Walk-up lockers at Umhlanga Lighthouse & Granny\'s Pool.', badge: null,       icon: <Ico.Sun />,   hours: '06:00 – 19:00', color: 'var(--pale)', colorBg: 'var(--pale-50)',  base: 30,  unit: 'per bag / hour' },
+  { id: 'storage', title: 'Luggage Storage',       desc: 'Secure storage by the hour at our Umhlanga facility.',            badge: null,      icon: <Ico.Box />,   hours: '07:00 – 21:00', color: 'var(--ocean)', colorBg: 'var(--ocean-50)', base: 50,  unit: 'per bag / hour' },
+  { id: 'door',    title: 'Door-to-Door Delivery', desc: 'Hotel to Airbnb, Airbnb to villa — same-day routed delivery.',   badge: 'Popular', icon: <Ico.Home />,  hours: '08:00 – 18:00', color: 'var(--sky)',   colorBg: 'var(--sky-50)',   base: 300, unit: 'per delivery, 1 cabin bag' },
+  { id: 'airport', title: 'King Shaka Transfer',   desc: 'Synced to your flight — pickup from any KZN address.',           badge: 'New',     icon: <Ico.Plane />, hours: '05:00 – 22:00', color: 'var(--deep)', colorBg: 'var(--deep-50)',  base: 295, unit: 'per trip' },
+  { id: 'beach',   title: 'Beach Day Storage',     desc: "Walk-up lockers at Umhlanga Lighthouse & Granny's Pool.",        badge: null,      icon: <Ico.Sun />,   hours: '06:00 – 19:00', color: 'var(--pale)', colorBg: 'var(--pale-50)',  base: 30,  unit: 'per bag / hour' },
 ]
+const STORAGE_SIZE_RATE: Record<SizeId, number> = { S: 50, M: 60, L: 70 }
+const STORAGE_HOURS = [1, 2, 3, 4, 5, 6, 8, 10, 12]
+
 const STORAGE_FACILITIES: FacilityData[] = [
-  { id: 'rocks',   name: 'Umhlanga Rocks HQ', addr: '12 Chartwell Dr, Umhlanga Rocks',       hours: '07:00 – 21:00', distance: '0.4 km from Lighthouse',     availability: 'high', icon: <Ico.Building n={20} /> },
-  { id: 'gateway', name: 'Gateway Mall',      addr: '1 Palm Blvd, Level 1, Umhlanga Ridge',  hours: '08:00 – 21:00', distance: 'Inside Gateway · near Exit 5', availability: 'high', icon: <Ico.Building n={20} /> },
-  { id: 'village', name: 'Umhlanga Village',  addr: '8 Lagoon Dr, Umhlanga',                 hours: '06:00 – 22:00', distance: '2 min walk from Cabana Beach',  availability: 'low',  icon: <Ico.Building n={20} /> },
-  { id: 'lalucia', name: 'La Lucia Mall',     addr: 'William Campbell Dr, La Lucia',          hours: '08:00 – 20:00', distance: '5 min off the M4',              availability: 'high', icon: <Ico.Building n={20} /> },
+  { id: 'beacon', name: 'Beacon Rock', addr: '21 Lighthouse Road, Umhlanga Rocks', hours: '07:00 – 21:00', distance: 'A few minutes from the Village & Promenade', availability: 'high', icon: <Ico.Building n={20} /> },
 ]
 const BEACH_LOCKERS: LockerData[] = [
   { id: 'lighthouse', name: 'Umhlanga Lighthouse', addr: 'Lighthouse Rd Promenade',    hours: '06:00 – 19:00', available: 14, total: 24, icon: <Ico.Umbrella n={20} /> },
@@ -70,38 +74,63 @@ const BEACH_LOCKERS: LockerData[] = [
   { id: 'bronze',     name: 'Bronze Beach',         addr: 'Lagoon Dr Boardwalk',        hours: '07:00 – 18:00', available: 16, total: 20, icon: <Ico.Umbrella n={20} /> },
   { id: 'westbrook',  name: 'Westbrook Beach',      addr: 'Westbrook Pkwy, La Mercy',   hours: '07:00 – 18:00', available: 3,  total: 12, icon: <Ico.Umbrella n={20} /> },
 ]
-const PRESET_LOCATIONS = [
-  { name: 'The Oyster Box',        addr: '2 Lighthouse Rd, Umhlanga Rocks' },
-  { name: 'Beverly Hills Hotel',   addr: 'Lighthouse Rd, Umhlanga Rocks' },
-  { name: 'Cabana Beach Resort',   addr: '10 Lagoon Dr, Umhlanga' },
-  { name: 'Pearls of Umhlanga',    addr: '6 Lagoon Dr, Umhlanga' },
-  { name: 'Sun Coast Hotel',       addr: 'Suncoast Blvd, Durban' },
-  { name: 'King Shaka Airport',    addr: 'La Mercy, KZN' },
+const PRESET_LOCATIONS: LocationData[] = [
+  { name: 'The Oyster Box',                  addr: '2 Lighthouse Rd, Umhlanga Rocks',        area: 'Umhlanga' },
+  { name: 'Beverly Hills Hotel',             addr: 'Lighthouse Rd, Umhlanga Rocks',           area: 'Umhlanga' },
+  { name: 'Cabana Beach Resort',             addr: '10 Lagoon Dr, Umhlanga',                  area: 'Umhlanga' },
+  { name: 'Pearls of Umhlanga',              addr: '6 Lagoon Dr, Umhlanga',                   area: 'Umhlanga' },
+  { name: 'Breakers Resort',                 addr: '88 Lagoon Dr, Umhlanga',                  area: 'Umhlanga' },
+  { name: 'Pearl Sky Apartments',            addr: '8 Lighthouse Rd, Umhlanga',               area: 'Umhlanga' },
+  { name: 'Gateway Theatre of Shopping',     addr: '1 Palm Blvd, Umhlanga Ridge',             area: 'Umhlanga Ridge' },
+  { name: 'uShaka Marine World',             addr: '1 King Shaka Ave, Durban',                area: 'Durban' },
+  { name: 'Sun Coast Hotel',                 addr: 'Suncoast Blvd, Durban',                   area: 'Durban' },
+  { name: 'King Shaka International Airport',addr: 'La Mercy, KZN',                           area: 'Airport' },
+  { name: 'Ballito Junction Mall',           addr: 'Leonora Dr, Ballito',                     area: 'Ballito' },
+  { name: 'Salt Rock Hotel',                 addr: 'Basil Hulett Dr, Salt Rock',              area: 'North Coast' },
+  { name: 'La Lucia Mall',                   addr: 'William Campbell Dr, La Lucia',           area: 'La Lucia' },
+  { name: "Granny's Pool",                   addr: 'North Beach Promenade, Umhlanga',         area: 'Umhlanga' },
+  // Out-of-area entries show a service notice in results
+  { name: 'Cape Town International Airport', addr: 'Matroosfontein, Cape Town',               area: 'Western Cape', outOfArea: true },
+  { name: 'V&A Waterfront',                  addr: 'Dock Rd, Cape Town',                      area: 'Western Cape', outOfArea: true },
+  { name: 'OR Tambo International Airport',  addr: 'Kempton Park, Johannesburg',              area: 'Gauteng',      outOfArea: true },
+  { name: 'Sandton City',                    addr: 'Rivonia Rd, Sandton',                     area: 'Gauteng',      outOfArea: true },
 ]
 const SPECIAL_ITEMS: SpecialItem[] = [
-  { id: 'surf',    label: 'Surfboard',         sub: 'Up to 8ft',           price: 80, icon: <Ico.Surf /> },
-  { id: 'pram',    label: 'Pram / Stroller',   sub: 'Folding only',        price: 35, icon: <Ico.Baby /> },
-  { id: 'fragile', label: 'Fragile items',     sub: 'Extra care handling', price: 50, icon: <Ico.Fragile /> },
-  { id: 'sport',   label: 'Sports equipment',  sub: 'Golf, bikes, etc.',   price: 60, icon: <Ico.Bike /> },
+  { id: 'surf',    label: 'Surfboard',        sub: 'Up to 8ft',           price: 100, icon: <Ico.Surf /> },
+  { id: 'pram',    label: 'Pram / Stroller',  sub: 'Folding only',        price: 100, icon: <Ico.Baby /> },
+  { id: 'fragile', label: 'Fragile items',    sub: 'Extra care handling', price: 100, icon: <Ico.Fragile /> },
+  { id: 'sport',   label: 'Sports equipment', sub: 'Golf, bikes, etc.',   price: 100, icon: <Ico.Bike /> },
 ]
 const TIME_SLOTS = ['08:00','10:00','11:00','13:00','15:00','17:00']
 const SIZES: SizeData[] = [
-  { id: 'S', label: 'Cabin',    lim: 'Up to 7kg' },
-  { id: 'M', label: 'Check-in', lim: '8–23kg' },
-  { id: 'L', label: 'Oversized',lim: '24–32kg' },
+  { id: 'S', label: 'Cabin',     lim: 'Up to 7kg' },
+  { id: 'M', label: 'Check-in',  lim: '8–23kg' },
+  { id: 'L', label: 'Oversized', lim: '24–32kg' },
 ]
 const DURATIONS: DurationData[] = [
-  { id: '1h',   label: '1 Hour',   sub: 'Quick swim',  hours: 1, icon: <Ico.Clock n={20} /> },
-  { id: 'half', label: 'Half Day', sub: '4 hours',     hours: 4, icon: <Ico.Sun n={20} /> },
-  { id: 'full', label: 'All Day',  sub: '8 hours',     hours: 8, icon: <Ico.Umbrella n={20} /> },
+  { id: '1h',   label: '1 Hour',   sub: 'Quick swim', hours: 1, icon: <Ico.Clock n={20} /> },
+  { id: 'half', label: 'Half Day', sub: '4 hours',    hours: 4, icon: <Ico.Sun n={20} /> },
+  { id: 'full', label: 'All Day',  sub: '8 hours',    hours: 8, icon: <Ico.Umbrella n={20} /> },
 ]
 
+// ─── Step routing ─────────────────────────────────────────────────────────────
+const DEFAULT_STEPS  = ['service','where','when','bags','details','review','done']
+const STORAGE_STEPS  = ['service','where','bags','when','details','review','done']
+const DOOR_STEPS     = ['service','where','bags','when','details','review','done']
+const stepsFor = (serviceId: string) => {
+  if (serviceId === 'storage') return STORAGE_STEPS
+  if (serviceId === 'door')    return DOOR_STEPS
+  return DEFAULT_STEPS
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmtPrice = (n: number) => Math.round(n).toLocaleString('en-ZA')
+const fmtPrice    = (n: number) => Math.round(n).toLocaleString('en-ZA')
+const totalBags   = (bags: Bags) => (bags?.S || 0) + (bags?.M || 0) + (bags?.L || 0)
+const storageHourly = (bags: Bags) => (bags?.S || 0) * 50 + (bags?.M || 0) * 60 + (bags?.L || 0) * 70
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const DOW = ['S','M','T','W','T','F','S']
 function buildCalendar(year: number, month: number): (Date | null)[] {
-  const first = new Date(year, month, 1)
+  const first    = new Date(year, month, 1)
   const startDow = first.getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const cells: (Date | null)[] = []
@@ -110,13 +139,13 @@ function buildCalendar(year: number, month: number): (Date | null)[] {
   while (cells.length % 7) cells.push(null)
   return cells
 }
-const fmtDay = (d: Date | null) => d ? d.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'
+const fmtDay  = (d: Date | null) => d ? d.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'
 const sameDay = (a: Date | null, b: Date | null) => !!(a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate())
 const daysBetween = (a: Date, b: Date) => Math.max(1, Math.round((b.getTime() - a.getTime()) / 86400000))
 
 // ─── CalendarPicker ───────────────────────────────────────────────────────────
 function CalendarPicker({ value, setValue, minDate }: { value: Date; setValue: (d: Date) => void; minDate?: Date }) {
-  const today = new Date(); today.setHours(0,0,0,0)
+  const today   = new Date(); today.setHours(0,0,0,0)
   const baseMin = minDate || today
   const [view, setView] = useState({ y: value.getFullYear(), m: value.getMonth() })
   const cells = useMemo(() => buildCalendar(view.y, view.m), [view])
@@ -137,9 +166,9 @@ function CalendarPicker({ value, setValue, minDate }: { value: Date; setValue: (
         {DOW.map((d, i) => <div key={i} className="cal-dow">{d}</div>)}
         {cells.map((c, i) => {
           if (!c) return <div key={i} />
-          const isPast = c < baseMin
+          const isPast  = c < baseMin
           const isToday = sameDay(c, today)
-          const isSel = sameDay(c, value)
+          const isSel   = sameDay(c, value)
           return (
             <button key={i} className={['cal-day', isPast ? 'disabled' : '', isToday ? 'today' : '', isSel ? 'selected' : ''].filter(Boolean).join(' ')} disabled={isPast} onClick={() => !isPast && setValue(c)}>
               {c.getDate()}
@@ -155,25 +184,35 @@ function CalendarPicker({ value, setValue, minDate }: { value: Date; setValue: (
 function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocean)' }: { value: string; onChange: (v: string) => void; placeholder: string; label: string; color?: string }) {
   const [focused, setFocused] = useState(false)
   const suggestions = useMemo(() => {
-    if (!value || value.length < 2 || !focused) return []
-    return PRESET_LOCATIONS.filter(p =>
-      p.name.toLowerCase().includes(value.toLowerCase()) ||
-      p.addr.toLowerCase().includes(value.toLowerCase())
-    ).slice(0, 4)
+    if (!focused) return []
+    const q = (value || '').toLowerCase().trim()
+    if (!q) return PRESET_LOCATIONS.filter(p => !p.outOfArea).slice(0, 6)
+    const matches = PRESET_LOCATIONS.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.addr.toLowerCase().includes(q) ||
+      (p.area && p.area.toLowerCase().includes(q))
+    )
+    return matches.sort((a, b) => (a.outOfArea ? 1 : 0) - (b.outOfArea ? 1 : 0)).slice(0, 6)
   }, [value, focused])
   return (
     <div className="input-group">
       <span className="input-label">{label}</span>
       <div className="input-wrap">
         <span className="lead" style={{ color }}><Ico.Pin n={18} /></span>
-        <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)} />
+        <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+          onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)} />
       </div>
       {suggestions.length > 0 && (
         <div className="suggestions">
+          {!value && <div className="suggestions-header">Familiar addresses</div>}
           {suggestions.map(s => (
-            <button key={s.name} className="suggestion" onMouseDown={e => { e.preventDefault(); onChange(s.name); setFocused(false) }}>
+            <button key={s.name} className={'suggestion' + (s.outOfArea ? ' out-of-area' : '')}
+              onMouseDown={e => { e.preventDefault(); onChange(s.name); setFocused(false) }}>
               <span className="ic"><Ico.Pin n={14} /></span>
-              <div><div className="name">{s.name}</div><div className="addr">{s.addr}</div></div>
+              <div>
+                <div className="name">{s.name}{s.outOfArea && <span className="oos-tag">Outside service area</span>}</div>
+                <div className="addr">{s.addr}</div>
+              </div>
             </button>
           ))}
         </div>
@@ -243,7 +282,7 @@ function StepService({ value, onChange }: { value: string; onChange: (id: string
 // ─── STEP 2 — Where ───────────────────────────────────────────────────────────
 function StepWhere({ service, state, set }: { service: ServiceData; state: BookingState; set: (p: Partial<BookingState>) => void }) {
   if (service.id === 'storage') return <WhereStorage state={state} set={set} />
-  if (service.id === 'beach')   return <WhereBeach state={state} set={set} />
+  if (service.id === 'beach')   return <WhereBeach   state={state} set={set} />
   if (service.id === 'airport') return <WhereAirport state={state} set={set} />
   return <WhereDoor state={state} set={set} />
 }
@@ -257,7 +296,7 @@ function WhereStorage({ state, set }: { state: BookingState; set: (p: Partial<Bo
         <button key={f.id} className={'facility-card' + (state.facility === f.id ? ' selected' : '')} onClick={() => set({ facility: f.id })}>
           <span className="fc-ic">{f.icon}</span>
           <div className="fc-body">
-            <div className="fc-name">{f.name}{f.id === 'rocks' && <span className="svc-badge" style={{ background: 'var(--sky-50)', color: 'var(--sky)' }}>HQ</span>}</div>
+            <div className="fc-name">{f.name}</div>
             <div className="fc-addr">{f.addr}</div>
             <div className="fc-meta">
               <span className="chip"><Ico.Clock />{f.hours}</span>
@@ -279,7 +318,7 @@ function WhereBeach({ state, set }: { state: BookingState; set: (p: Partial<Book
       <h1 className="step-title">Choose your beach locker</h1>
       <p className="step-sub">Walk-up, self-service lockers. We&apos;ll send a 4-digit unlock code instantly.</p>
       {BEACH_LOCKERS.map(l => {
-        const ratio = l.available / l.total
+        const ratio  = l.available / l.total
         const status = ratio > 0.4 ? 'high' : 'low'
         return (
           <button key={l.id} className={'facility-card' + (state.locker === l.id ? ' selected' : '')} onClick={() => set({ locker: l.id })}>
@@ -328,15 +367,13 @@ function WhereDoor({ state, set }: { state: BookingState; set: (p: Partial<Booki
   return (
     <div>
       <h1 className="step-title">Where shall we collect?</h1>
-      <p className="step-sub">We collect from your hotel or Airbnb and deliver to your next stop.</p>
+      <p className="step-sub">Search any South African address — we currently operate inside uMhlanga and the immediate KZN coast.</p>
       <MapTile />
-      <AddressInput label="Pickup"   value={state.pickup}  onChange={v => set({ pickup: v })}  placeholder="Hotel, address, or area" />
+      <AddressInput label="Pickup"   value={state.pickup}  onChange={v => set({ pickup: v })}  placeholder="Search hotel, address, or area" />
       <AddressInput label="Drop-off" value={state.dropoff} onChange={v => set({ dropoff: v })} placeholder="Where should we deliver?" color="var(--sky)" />
-      <div className="section-label">Popular pickups</div>
-      <div className="preset-chips">
-        {PRESET_LOCATIONS.slice(0, 5).map(p => (
-          <button key={p.name} className={'chip-btn' + (state.pickup === p.name ? ' selected' : '')} onClick={() => set({ pickup: p.name })}>{p.name}</button>
-        ))}
+      <div className="service-area-note">
+        <Ico.Pin n={14} />
+        <span>Outside uMhlanga? WhatsApp us — we may still be able to help on a custom route.</span>
       </div>
     </div>
   )
@@ -345,47 +382,61 @@ function WhereDoor({ state, set }: { state: BookingState; set: (p: Partial<Booki
 // ─── STEP 3 — When ────────────────────────────────────────────────────────────
 function StepWhen({ service, state, set }: { service: ServiceData; state: BookingState; set: (p: Partial<BookingState>) => void }) {
   if (service.id === 'storage') return <WhenStorage state={state} set={set} />
-  if (service.id === 'beach')   return <WhenBeach state={state} set={set} />
+  if (service.id === 'beach')   return <WhenBeach   state={state} set={set} />
   return <WhenDefault state={state} set={set} service={service} />
 }
 
 function WhenStorage({ state, set }: { state: BookingState; set: (p: Partial<BookingState>) => void }) {
-  const [editing, setEditing] = useState<'drop' | 'pick'>('drop')
-  const days = state.date && state.endDate ? daysBetween(state.date, state.endDate) : 0
+  const today    = new Date(); today.setHours(0,0,0,0)
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
+  const dayAfter = new Date(today); dayAfter.setDate(today.getDate() + 2)
+  const [showCalendar, setShowCalendar] = useState(false)
+
+  const hours    = state.hours || 2
+  const bagCount = totalBags(state.bags)
+  const total    = storageHourly(state.bags) * hours
+
+  const isQuickDay    = sameDay(state.date, today) || sameDay(state.date, tomorrow) || sameDay(state.date, dayAfter)
+  const customDayLabel = !isQuickDay && state.date
+    ? state.date.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })
+    : null
+
   return (
     <div>
       <h1 className="step-title">When do you need it stored?</h1>
-      <p className="step-sub">Pick your drop-off and collection dates — we charge per 12-hour block.</p>
-      <div className="range-tiles">
-        <button className={'range-tile' + (editing === 'drop' ? ' active' : '')} onClick={() => setEditing('drop')}>
-          <div className="lbl">Drop-off</div>
-          <div className="val">{fmtDay(state.date)}</div>
-          <div className="sub">{state.time || 'Pick a time'}</div>
+      <p className="step-sub">Pick the day, a drop-off time, and how many hours you&apos;ll need it. We charge per hour, per bag.</p>
+      <div className="section-label" style={{ marginTop: 0 }}>Day</div>
+      <div className="quick-dates">
+        <button className={'chip-btn' + (sameDay(state.date, today) ? ' selected' : '')} onClick={() => { set({ date: today }); setShowCalendar(false) }}>Today</button>
+        <button className={'chip-btn' + (sameDay(state.date, tomorrow) ? ' selected' : '')} onClick={() => { set({ date: tomorrow }); setShowCalendar(false) }}>Tomorrow</button>
+        <button className={'chip-btn' + (sameDay(state.date, dayAfter) ? ' selected' : '')} onClick={() => { set({ date: dayAfter }); setShowCalendar(false) }}>
+          {dayAfter.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}
         </button>
-        <div className="range-arrow"><Ico.Arrow n={16} /></div>
-        <button className={'range-tile' + (editing === 'pick' ? ' active' : '')} onClick={() => setEditing('pick')}>
-          <div className="lbl">Pick-up</div>
-          <div className="val">{fmtDay(state.endDate)}</div>
-          <div className="sub">{state.endTime || 'Pick a time'}</div>
+        <button className={'chip-btn' + (customDayLabel || showCalendar ? ' selected' : '')} onClick={() => setShowCalendar(v => !v)} aria-expanded={showCalendar}>
+          {customDayLabel || 'Pick a date'}
+          <span style={{ display: 'inline-block', marginLeft: 4, transform: showCalendar ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform .2s ease', verticalAlign: 'middle' }}>
+            <Ico.ChevDown />
+          </span>
         </button>
       </div>
-      {days > 0 && (
-        <div className="duration-hint">
-          <Ico.Clock /> Storing for {days} day{days > 1 ? 's' : ''} · R{state.bagCount * 45 * days} total storage
-        </div>
+      {showCalendar && (
+        <CalendarPicker value={state.date} setValue={d => { set({ date: d }); setShowCalendar(false) }} />
       )}
-      {editing === 'drop' ? (
-        <>
-          <CalendarPicker value={state.date} setValue={d => { set({ date: d }); if (state.endDate && d > state.endDate) set({ endDate: new Date(d.getTime() + 86400000) }) }} />
-          <div className="section-label">Drop-off time</div>
-          <div className="time-grid">{TIME_SLOTS.map(t => <button key={t} className={'time-slot' + (state.time === t ? ' selected' : '')} onClick={() => { set({ time: t }); setEditing('pick') }}>{t}</button>)}</div>
-        </>
-      ) : (
-        <>
-          <CalendarPicker value={state.endDate} setValue={d => set({ endDate: d })} minDate={state.date} />
-          <div className="section-label">Pick-up time</div>
-          <div className="time-grid">{TIME_SLOTS.map(t => <button key={t} className={'time-slot' + (state.endTime === t ? ' selected' : '')} onClick={() => set({ endTime: t })}>{t}</button>)}</div>
-        </>
+      <div className="section-label">Drop-off time</div>
+      <div className="time-grid">
+        {TIME_SLOTS.map(t => <button key={t} className={'time-slot' + (state.time === t ? ' selected' : '')} onClick={() => set({ time: t })}>{t}</button>)}
+      </div>
+      <div className="section-label">How many hours?</div>
+      <div className="hours-dropdown-wrap">
+        <select className="hours-dropdown" value={hours} onChange={e => set({ hours: Number(e.target.value) })}>
+          {STORAGE_HOURS.map(h => <option key={h} value={h}>{h} hour{h > 1 ? 's' : ''}</option>)}
+        </select>
+        <span className="hours-dropdown-caret"><Ico.Arrow n={14} /></span>
+      </div>
+      {bagCount > 0 && (
+        <div className="duration-hint">
+          <Ico.Clock /> {bagCount} bag{bagCount !== 1 ? 's' : ''} · {hours}h · <strong style={{ color: 'var(--navy)', marginLeft: 4 }}>R{total}</strong>
+        </div>
       )}
     </div>
   )
@@ -416,13 +467,13 @@ function WhenBeach({ state, set }: { state: BookingState; set: (p: Partial<Booki
 }
 
 function WhenDefault({ state, set, service }: { state: BookingState; set: (p: Partial<BookingState>) => void; service: ServiceData }) {
-  const today = new Date(); today.setHours(0,0,0,0)
+  const today    = new Date(); today.setHours(0,0,0,0)
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
-  const quick = (offset: number) => { const d = new Date(today); d.setDate(today.getDate() + offset); set({ date: d }) }
+  const quick    = (offset: number) => { const d = new Date(today); d.setDate(today.getDate() + offset); set({ date: d }) }
   return (
     <div>
       <h1 className="step-title">{service.id === 'airport' ? 'When are you flying?' : 'When works best?'}</h1>
-      <p className="step-sub">{service.id === 'airport' ? "We sync drop-off to your departure — 3h international, 90 min domestic." : "We'll arrive within a 2-hour window of your slot."}</p>
+      <p className="step-sub">{service.id === 'airport' ? 'We sync drop-off to your departure — 3h international, 90 min domestic.' : "We'll arrive within a 30-minute window of your slot."}</p>
       <div className="quick-dates">
         <button className={'chip-btn' + (sameDay(state.date, today) ? ' selected' : '')} onClick={() => quick(0)}>Today</button>
         <button className={'chip-btn' + (sameDay(state.date, tomorrow) ? ' selected' : '')} onClick={() => quick(1)}>Tomorrow</button>
@@ -437,32 +488,43 @@ function WhenDefault({ state, set, service }: { state: BookingState; set: (p: Pa
 
 // ─── STEP 4 — Bags ────────────────────────────────────────────────────────────
 function StepBags({ state, set }: { state: BookingState; set: (p: Partial<BookingState>) => void }) {
-  const [bumped, setBumped] = useState(0)
+  const bags  = state.bags || { S: 0, M: 0, L: 0 }
+  const total = totalBags(bags)
+  const MAX   = 8
+  const setBag = (sizeId: SizeId, delta: number) => {
+    const cur  = bags[sizeId] || 0
+    const next = Math.max(0, Math.min(cur + delta, MAX - (total - cur)))
+    set({ bags: { ...bags, [sizeId]: next } })
+  }
   return (
     <div>
       <h1 className="step-title">How many bags?</h1>
-      <p className="step-sub">Tell us the count and size so we send the right vehicle.</p>
-      <div className="counter-card">
-        <span className="counter-ic"><Ico.Luggage full={Math.min(state.bagCount, 3)} /></span>
-        <div className="counter-body">
-          <div className="counter-title">Bags</div>
-          <div className="counter-sub">Add up to 8 per booking</div>
-        </div>
-        <div className="counter-controls">
-          <button className="counter-btn" onClick={() => { set({ bagCount: Math.max(1, state.bagCount - 1) }); setBumped(b => b + 1) }} disabled={state.bagCount <= 1}><Ico.Minus /></button>
-          <span className={'counter-val' + (bumped ? ' bump' : '')} key={bumped}>{state.bagCount}</span>
-          <button className="counter-btn" onClick={() => { set({ bagCount: Math.min(8, state.bagCount + 1) }); setBumped(b => b + 1) }} disabled={state.bagCount >= 8}><Ico.Plus /></button>
-        </div>
+      <p className="step-sub">Tell us how many of each size — you can mix and match. Up to {MAX} bags per booking.</p>
+      <div className="bag-mix-stack">
+        {SIZES.map(s => {
+          const qty  = bags[s.id] || 0
+          const rate = STORAGE_SIZE_RATE[s.id]
+          return (
+            <div key={s.id} className={'bag-mix-row' + (qty > 0 ? ' active' : '')}>
+              <span className="bag-mix-ic">
+                <Ico.Luggage n={s.id === 'S' ? 24 : s.id === 'M' ? 30 : 36} full={s.id === 'L' ? 3 : s.id === 'M' ? 2 : 1} />
+              </span>
+              <div className="bag-mix-info">
+                <div className="bag-mix-title">{s.label}</div>
+                <div className="bag-mix-sub">{s.lim} · R{rate}/hr storage</div>
+              </div>
+              <div className="counter-controls">
+                <button className="counter-btn" onClick={() => setBag(s.id, -1)} disabled={qty <= 0} aria-label={`Remove ${s.label}`}><Ico.Minus /></button>
+                <span className="counter-val" key={qty}>{qty}</span>
+                <button className="counter-btn" onClick={() => setBag(s.id, +1)} disabled={total >= MAX} aria-label={`Add ${s.label}`}><Ico.Plus /></button>
+              </div>
+            </div>
+          )
+        })}
       </div>
-      <div className="section-label">Bag size</div>
-      <div className="size-row">
-        {SIZES.map(s => (
-          <button key={s.id} className={'size-tile' + (state.size === s.id ? ' selected' : '')} onClick={() => set({ size: s.id })}>
-            <div className="ic"><Ico.Luggage n={s.id === 'S' ? 22 : s.id === 'M' ? 28 : 34} full={s.id === 'L' ? 3 : s.id === 'M' ? 2 : 1} /></div>
-            <div className="sz">{s.label}</div>
-            <div className="lim">{s.lim}</div>
-          </button>
-        ))}
+      <div className="bag-mix-summary">
+        <span>Total bags</span>
+        <strong>{total} / {MAX}</strong>
       </div>
       <div className="section-label">Anything special?</div>
       {SPECIAL_ITEMS.map(it => {
@@ -482,7 +544,7 @@ function StepBags({ state, set }: { state: BookingState; set: (p: Partial<Bookin
 
 // ─── STEP 5 — Details ─────────────────────────────────────────────────────────
 function StepDetails({ service, state, set }: { service: ServiceData; state: BookingState; set: (p: Partial<BookingState>) => void }) {
-  const isDoor = service.id === 'door'
+  const isDoor    = service.id === 'door'
   const isAirport = service.id === 'airport'
   const upd = (patch: Partial<Details>) => set({ details: { ...state.details, ...patch } })
   return (
@@ -552,6 +614,9 @@ function StepReview({ service, state, breakdown, payMethod, setPayMethod, promo,
   const facility = STORAGE_FACILITIES.find(f => f.id === state.facility)
   const locker   = BEACH_LOCKERS.find(l => l.id === state.locker)
   const duration = DURATIONS.find(d => d.id === state.duration)
+  const bagCount = totalBags(state.bags)
+  const bagDesc  = SIZES.filter(s => (state.bags?.[s.id] || 0) > 0)
+    .map(s => `${state.bags[s.id]} ${s.label.toLowerCase()}`).join(', ') || '—'
   return (
     <div>
       <h1 className="step-title">Review &amp; pay</h1>
@@ -562,8 +627,7 @@ function StepReview({ service, state, breakdown, payMethod, setPayMethod, promo,
         {service.id === 'storage' && <>
           <div className="review-row"><span className="k">Facility</span><span className="v">{facility?.name || '—'}</span></div>
           <div className="review-row"><span className="k">Drop-off</span><span className="v">{fmtDay(state.date)} · {state.time}</span></div>
-          <div className="review-row"><span className="k">Pick-up</span><span className="v">{fmtDay(state.endDate)} · {state.endTime}</span></div>
-          <div className="review-row"><span className="k">Duration</span><span className="v">{daysBetween(state.date, state.endDate)} days</span></div>
+          <div className="review-row"><span className="k">Duration</span><span className="v">{state.hours} hour{state.hours > 1 ? 's' : ''}</span></div>
         </>}
         {service.id === 'door' && <>
           <div className="review-row"><span className="k">Pickup</span><span className="v">{state.pickup || '—'}</span></div>
@@ -582,20 +646,20 @@ function StepReview({ service, state, breakdown, payMethod, setPayMethod, promo,
           <div className="review-row"><span className="k">Start</span><span className="v">Today · {state.time}</span></div>
           <div className="review-row"><span className="k">Duration</span><span className="v">{duration?.label}</span></div>
         </>}
-        <div className="review-row"><span className="k">Bags</span><span className="v">{state.bagCount} × {SIZES.find(s => s.id === state.size)?.label}</span></div>
+        <div className="review-row"><span className="k">Bags</span><span className="v">{bagDesc}</span></div>
       </div>
       <div className="section-label">Add-ons</div>
       <div className={'toggle-row' + (state.insurance ? ' on' : '')} onClick={() => set({ insurance: !state.insurance })}>
         <span className="ic"><Ico.Shield n={18} /></span>
         <div className="info"><div className="t">Premium insurance</div><div className="s">Coverage up to R25,000 per bag.</div></div>
-        <span className="p">+R{49 * state.bagCount}</span>
+        <span className="p">+R{49 * bagCount}</span>
         <span className="check">{state.insurance && <Ico.Check n={12} />}</span>
       </div>
       <div className="section-label">Payment method</div>
       {[
         { id: 'card', logo: 'VISA', name: 'Credit / Debit card', sub: 'Visa, Mastercard, Amex', style: {} },
-        { id: 'snap', logo: 'SNAP', name: 'SnapScan', sub: 'QR code on next step', style: { background: '#1A56DB', color: '#fff', borderColor: '#1A56DB' } },
-        { id: 'eft',  logo: 'EFT',  name: 'Instant EFT', sub: 'Ozow secure transfer', style: {} },
+        { id: 'snap', logo: 'SNAP', name: 'SnapScan',            sub: 'QR code on next step',  style: { background: '#1A56DB', color: '#fff', borderColor: '#1A56DB' } },
+        { id: 'eft',  logo: 'EFT',  name: 'Instant EFT',         sub: 'Ozow secure transfer',  style: {} },
       ].map(pm => (
         <div key={pm.id} className={'pay-row' + (payMethod === pm.id ? ' selected' : '')} onClick={() => setPayMethod(pm.id)}>
           <div className="logo-box" style={pm.style}>{pm.logo}</div>
@@ -644,8 +708,11 @@ function FakeQR({ seed }: { seed: string }) {
 
 // ─── STEP 7 — Done ────────────────────────────────────────────────────────────
 function StepDone({ service, state, breakdown, refCode, onRestart }: { service: ServiceData; state: BookingState; breakdown: { lines: PriceLine[]; total: number }; refCode: string; onRestart: () => void }) {
-  const facility = STORAGE_FACILITIES.find(f => f.id === state.facility)
-  const locker   = BEACH_LOCKERS.find(l => l.id === state.locker)
+  const facility   = STORAGE_FACILITIES.find(f => f.id === state.facility)
+  const locker     = BEACH_LOCKERS.find(l => l.id === state.locker)
+  const bagCount   = totalBags(state.bags)
+  const bagDesc    = SIZES.filter(s => (state.bags?.[s.id] || 0) > 0)
+    .map(s => `${state.bags[s.id]} ${s.label.toLowerCase()}`).join(', ')
   return (
     <div className="success">
       <div className="success-circle">
@@ -671,9 +738,11 @@ function StepDone({ service, state, breakdown, refCode, onRestart }: { service: 
           <div className="qr-wrap">
             <FakeQR seed={refCode} />
             <div style={{ flex: 1, fontSize: 13, color: 'var(--navy-70)', textAlign: 'left' }}>
-              <div style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, color: 'var(--navy)', fontSize: 14, marginBottom: 4 }}>{state.bagCount} bag{state.bagCount > 1 ? 's' : ''} · {SIZES.find(s => s.id === state.size)?.label}</div>
-              <div>{fmtDay(state.date)} → {fmtDay(state.endDate)}</div>
-              <div style={{ color: 'var(--navy-50)', marginTop: 4 }}>{daysBetween(state.date, state.endDate)} days storage</div>
+              <div style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, color: 'var(--navy)', fontSize: 14, marginBottom: 4 }}>
+                {bagCount} bag{bagCount !== 1 ? 's' : ''}{bagDesc ? ` · ${bagDesc}` : ''}
+              </div>
+              <div>{fmtDay(state.date)} · {state.time}</div>
+              <div style={{ color: 'var(--navy-50)', marginTop: 4 }}>{state.hours} hour{state.hours > 1 ? 's' : ''} of storage</div>
             </div>
           </div>
         </div>
@@ -710,7 +779,7 @@ function StepDone({ service, state, breakdown, refCode, onRestart }: { service: 
       <div className="review-section" style={{ width: '100%', textAlign: 'left' }}>
         <h4>Total paid</h4>
         <div className="review-row" style={{ paddingTop: 0, paddingBottom: 0 }}>
-          <span className="k">{state.bagCount} bag{state.bagCount > 1 ? 's' : ''}</span>
+          <span className="k">{bagCount} bag{bagCount !== 1 ? 's' : ''}</span>
           <span className="v" style={{ color: 'var(--ocean)', fontSize: 18 }}>R{fmtPrice(breakdown.total)}</span>
         </div>
       </div>
@@ -761,54 +830,83 @@ function FooterBar({ totalLabel, total, qtyLabel, ctaLabel, onClick, disabled, l
 }
 
 // ─── Main App (orchestrator) ──────────────────────────────────────────────────
-const STEPS = ['service','where','when','bags','details','review','done']
-
 function BookingApp() {
-  const [step, setStep]           = useState(0)
-  const [direction, setDirection] = useState<'fwd' | 'back'>('fwd')
-  const [loading, setLoading]     = useState(false)
+  const [step, setStep]             = useState(0)
+  const [direction, setDirection]   = useState<'fwd' | 'back'>('fwd')
+  const [loading, setLoading]       = useState(false)
   const [bookingRef, setBookingRef] = useState('')
 
   const today    = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d }, [])
   const tomorrow = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 1); return d }, [today])
 
   const [state, setState] = useState<BookingState>({
-    service: 'door', pickup: 'The Oyster Box', dropoff: '', facility: 'rocks', locker: 'lighthouse',
+    service: 'door', pickup: 'The Oyster Box', dropoff: '', facility: 'beacon', locker: 'lighthouse',
     direction: 'to', date: tomorrow, time: '11:00', endDate: new Date(tomorrow.getTime() + 2 * 86400000), endTime: '11:00',
-    duration: 'half', bagCount: 2, size: 'M', extras: [],
+    duration: 'half', bags: { S: 1, M: 0, L: 0 }, hours: 2, extras: [],
     details: { name: '', phone: '', email: '', whatsapp: true, airline: '', flight: '' },
     recipient: { name: '', phone: '' }, insurance: false,
   })
   const set = (patch: Partial<BookingState>) => setState(s => ({ ...s, ...patch }))
 
-  const [payMethod, setPayMethod] = useState('card')
-  const [promo, setPromo]         = useState('')
+  const [payMethod, setPayMethod]   = useState('card')
+  const [promo, setPromo]           = useState('')
   const [promoApplied, setPromoApplied] = useState<{ code: string; type: string; value: number; label: string } | null>(null)
 
-  const service = SERVICES.find(s => s.id === state.service)!
+  const service    = SERVICES.find(s => s.id === state.service)!
+  const stepKeys   = stepsFor(state.service)
+  const currentKey = stepKeys[step]
 
   const breakdown = useMemo(() => {
     const lines: PriceLine[] = []
     let base = 0
+    const bags     = state.bags || { S: 0, M: 0, L: 0 }
+    const bagCount = totalBags(bags)
+
     if (service.id === 'storage') {
-      const days = daysBetween(state.date, state.endDate)
-      base = service.base * state.bagCount * days
-      lines.push({ label: `Storage · ${state.bagCount} bag${state.bagCount > 1 ? 's' : ''} × ${days} day${days > 1 ? 's' : ''}`, amount: base })
+      const h = state.hours || 1
+      SIZES.forEach(s => {
+        const qty = bags[s.id] || 0
+        if (qty > 0) {
+          const rate = STORAGE_SIZE_RATE[s.id]
+          const amt  = qty * rate * h
+          lines.push({ label: `${s.label} · ${qty} bag${qty > 1 ? 's' : ''} × ${h}h · R${rate}/hr`, amount: amt })
+          base += amt
+        }
+      })
     } else if (service.id === 'beach') {
-      const hours = DURATIONS.find(d => d.id === state.duration)?.hours ?? 1
-      base = service.base * state.bagCount * hours
-      lines.push({ label: `Beach locker · ${state.bagCount} bag${state.bagCount > 1 ? 's' : ''} × ${hours}h`, amount: base })
+      const h = DURATIONS.find(d => d.id === state.duration)?.hours ?? 1
+      base = service.base * bagCount * h
+      lines.push({ label: `Beach locker · ${bagCount} bag${bagCount > 1 ? 's' : ''} × ${h}h`, amount: base })
     } else if (service.id === 'airport') {
       base = service.base
       lines.push({ label: 'Airport transfer · base fare', amount: base })
-      if (state.bagCount > 3) { const extra = (state.bagCount - 3) * 50; lines.push({ label: `Extra bags × ${state.bagCount - 3}`, amount: extra }); base += extra }
+      if (bagCount > 3) {
+        const extra = (bagCount - 3) * 50
+        lines.push({ label: `Extra bags × ${bagCount - 3}`, amount: extra })
+        base += extra
+      }
     } else {
-      base = service.base * state.bagCount
-      lines.push({ label: `Delivery · ${state.bagCount} bag${state.bagCount > 1 ? 's' : ''}`, amount: base })
+      // door-to-door: R250 flat collection + per-size per-bag fee
+      lines.push({ label: 'Collection & drop-off', amount: 250 })
+      base += 250
+      SIZES.forEach(s => {
+        const qty = bags[s.id] || 0
+        if (qty > 0) {
+          const rate = STORAGE_SIZE_RATE[s.id]
+          const amt  = qty * rate
+          lines.push({ label: `${s.label} · ${qty} bag${qty > 1 ? 's' : ''} × R${rate}`, amount: amt })
+          base += amt
+        }
+      })
     }
-    if (state.size === 'L') { const xl = 30 * state.bagCount; lines.push({ label: 'Oversized handling', amount: xl }) }
+
+    // Oversized handling (airport & beach only — storage and door already price by size)
+    if (service.id !== 'storage' && service.id !== 'door' && bags.L > 0) {
+      const xl = 30 * bags.L
+      lines.push({ label: `Oversized handling × ${bags.L}`, amount: xl })
+    }
     state.extras.forEach(eid => { const it = SPECIAL_ITEMS.find(x => x.id === eid); if (it) lines.push({ label: it.label, amount: it.price }) })
-    if (state.insurance) lines.push({ label: 'Premium insurance', amount: 49 * state.bagCount })
+    if (state.insurance) lines.push({ label: 'Premium insurance', amount: 49 * totalBags(bags) })
     const subtotal = lines.reduce((s, l) => s + l.amount, 0)
     let total = subtotal
     if (promoApplied) {
@@ -820,42 +918,44 @@ function BookingApp() {
   }, [service, state, promoApplied])
 
   const canContinue = useMemo((): boolean => {
-    switch (step) {
-      case 0: return !!state.service
-      case 1:
+    switch (currentKey) {
+      case 'service': return !!state.service
+      case 'where': {
         if (service.id === 'storage') return !!state.facility
         if (service.id === 'beach')   return !!state.locker
         if (service.id === 'airport') return !!state.pickup && !!state.direction
         return !!state.pickup && !!state.dropoff
-      case 2:
-        if (service.id === 'storage') return !!(state.date && state.endDate && state.time && state.endTime)
+      }
+      case 'when': {
+        if (service.id === 'storage') return !!(state.date && state.time && state.hours)
         if (service.id === 'beach')   return !!(state.time && state.duration)
         return !!(state.date && state.time)
-      case 3: return state.bagCount > 0 && !!state.size
-      case 4: {
+      }
+      case 'bags': return totalBags(state.bags) > 0
+      case 'details': {
         const d = state.details
         if (!d.name || !d.phone || !d.email) return false
         if (service.id === 'airport' && (!d.airline || !d.flight)) return false
         return true
       }
-      case 5: return !!payMethod
+      case 'review': return !!payMethod
       default: return true
     }
-  }, [step, state, service, payMethod])
+  }, [currentKey, state, service, payMethod])
 
   const handleContinue = () => {
-    if (step === 5) {
+    if (currentKey === 'review') {
       setLoading(true)
       setTimeout(() => {
         setLoading(false)
         setBookingRef('AHB-' + Math.floor(Math.random() * 90000 + 10000))
         setDirection('fwd')
-        setStep(6)
+        setStep(stepKeys.length - 1)
       }, 1400)
       return
     }
     setDirection('fwd')
-    setStep(s => Math.min(STEPS.length - 1, s + 1))
+    setStep(s => Math.min(stepKeys.length - 1, s + 1))
   }
   const handleBack  = () => { setDirection('back'); setStep(s => Math.max(0, s - 1)) }
   const handleClose = () => { if (typeof window !== 'undefined' && window.confirm('Cancel this booking?')) { setDirection('back'); setStep(0) } }
@@ -869,29 +969,44 @@ function BookingApp() {
   }
   const restart = () => { setStep(0); setBookingRef(''); setPromoApplied(null); setState(s => ({ ...s, extras: [], insurance: false, recipient: { name: '', phone: '' } })) }
 
-  const cta = step === 5 ? `Pay R${fmtPrice(breakdown.total)}` : step === 6 ? 'Done' : 'Continue'
-  const qtyLabel = step === 0 ? service.unit : `${state.bagCount} bag${state.bagCount > 1 ? 's' : ''}${state.insurance ? ' · insured' : ''}`
-  const displayedTotal = step === 0
-    ? (service.id === 'beach' ? service.base * (DURATIONS.find(d => d.id === state.duration)?.hours ?? 4) : service.base * state.bagCount)
-    : breakdown.total
+  const cta = currentKey === 'review' ? `Pay R${fmtPrice(breakdown.total)}` : currentKey === 'done' ? 'Done' : 'Continue'
+  const bagCount = totalBags(state.bags)
+  const qtyLabel = (() => {
+    if (currentKey === 'service') return service.unit
+    const bagPart = `${bagCount} bag${bagCount !== 1 ? 's' : ''}`
+    if (service.id === 'storage') return `${bagPart} · ${state.hours || 1}h${state.insurance ? ' · insured' : ''}`
+    if (service.id === 'beach') {
+      const h = DURATIONS.find(d => d.id === state.duration)?.hours || 1
+      return `${bagPart} · ${h}h${state.insurance ? ' · insured' : ''}`
+    }
+    return `${bagPart}${state.insurance ? ' · insured' : ''}`
+  })()
 
-  const stepKey = STEPS[step] + step + state.service
+  const stepKey = currentKey + step + state.service
 
   return (
     <>
-      {step < 6 && <AppHeader step={step} totalSteps={7} onBack={handleBack} onClose={handleClose} />}
+      {currentKey !== 'done' && <AppHeader step={step} totalSteps={stepKeys.length} onBack={handleBack} onClose={handleClose} />}
       <div className="bk-app-body">
         <div key={stepKey} className={direction === 'back' ? 'step-enter-back' : 'step-enter'}>
-          {step === 0 && <StepService value={state.service} onChange={id => set({ service: id })} />}
-          {step === 1 && <StepWhere service={service} state={state} set={set} />}
-          {step === 2 && <StepWhen service={service} state={state} set={set} />}
-          {step === 3 && <StepBags state={state} set={set} />}
-          {step === 4 && <StepDetails service={service} state={state} set={set} />}
-          {step === 5 && <StepReview service={service} state={state} breakdown={breakdown} payMethod={payMethod} setPayMethod={setPayMethod} promo={promo} setPromo={setPromo} promoApplied={promoApplied} applyPromo={applyPromo} set={set} />}
-          {step === 6 && <StepDone service={service} state={state} breakdown={breakdown} refCode={bookingRef} onRestart={restart} />}
+          {currentKey === 'service' && <StepService value={state.service} onChange={id => set({ service: id })} />}
+          {currentKey === 'where'   && <StepWhere service={service} state={state} set={set} />}
+          {currentKey === 'when'    && <StepWhen  service={service} state={state} set={set} />}
+          {currentKey === 'bags'    && <StepBags  state={state} set={set} />}
+          {currentKey === 'details' && <StepDetails service={service} state={state} set={set} />}
+          {currentKey === 'review'  && (
+            <StepReview service={service} state={state} breakdown={breakdown} payMethod={payMethod} setPayMethod={setPayMethod}
+              promo={promo} setPromo={setPromo} promoApplied={promoApplied} applyPromo={applyPromo} set={set} />
+          )}
+          {currentKey === 'done' && (
+            <StepDone service={service} state={state} breakdown={breakdown} refCode={bookingRef} onRestart={restart} />
+          )}
         </div>
       </div>
-      {step < 6 && <FooterBar totalLabel={step === 0 ? 'From' : 'Estimated total'} total={displayedTotal} qtyLabel={qtyLabel} ctaLabel={cta} onClick={handleContinue} disabled={!canContinue} loading={loading} />}
+      {currentKey !== 'done' && (
+        <FooterBar totalLabel={step === 0 ? 'From' : 'Estimated total'} total={breakdown.total}
+          qtyLabel={qtyLabel} ctaLabel={cta} onClick={handleContinue} disabled={!canContinue} loading={loading} />
+      )}
     </>
   )
 }
