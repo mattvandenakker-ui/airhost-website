@@ -392,7 +392,7 @@ function WhenStorage({ state, set }: { state: BookingState; set: (p: Partial<Boo
   const dayAfter = new Date(today); dayAfter.setDate(today.getDate() + 2)
   const [showCalendar, setShowCalendar] = useState(false)
 
-  const hours    = state.hours || 2
+  const hours    = state.hours || 1
   const bagCount = totalBags(state.bags)
   const total    = storageHourly(state.bags) * hours
 
@@ -842,7 +842,7 @@ function BookingApp() {
   const [state, setState] = useState<BookingState>({
     service: 'door', pickup: 'The Oyster Box', dropoff: '', facility: 'beacon', locker: 'lighthouse',
     direction: 'to', date: tomorrow, time: '11:00', endDate: new Date(tomorrow.getTime() + 2 * 86400000), endTime: '11:00',
-    duration: 'half', bags: { S: 1, M: 0, L: 0 }, hours: 2, extras: [],
+    duration: 'half', bags: { S: 1, M: 0, L: 0 }, hours: 1, extras: [],
     details: { name: '', phone: '', email: '', whatsapp: true, airline: '', flight: '' },
     recipient: { name: '', phone: '' }, insurance: false,
   })
