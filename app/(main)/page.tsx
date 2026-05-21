@@ -213,8 +213,8 @@ export default function HomePage() {
                 </svg>
               </span>
               <h3 className={s.serviceH3}>Luggage Storage</h3>
-              <p className={s.serviceP}>Secure, climate-controlled storage by the hour or day. Insured up to R10,000 per bag.</p>
-              <span className={s.serviceMeta}>From R45 / day <Arrow size={14} /></span>
+              <p className={s.serviceP}>Secure, climate-controlled storage by the hour. Insured up to R10,000 per bag.</p>
+              <span className={s.serviceMeta}>From R50 / hour <Arrow size={14} /></span>
             </Link>
             <Link href="/book" className={s.service}>
               <span className={s.serviceIcon}>
@@ -223,8 +223,8 @@ export default function HomePage() {
                 </svg>
               </span>
               <h3 className={s.serviceH3}>Door-to-Door Delivery</h3>
-              <p className={s.serviceP}>From hotel to hotel, Airbnb to villa — same-day routed deliveries across Umhlanga and Ballito.</p>
-              <span className={s.serviceMeta}>From R120 / drop <Arrow size={14} /></span>
+              <p className={s.serviceP}>From hotel to Airbnb, villa to villa — same-day routed deliveries across Umhlanga and Ballito.</p>
+              <span className={s.serviceMeta}>From R300 / delivery <Arrow size={14} /></span>
             </Link>
             <Link href="/book" className={s.service}>
               <span className={s.serviceIcon}>
@@ -233,18 +233,8 @@ export default function HomePage() {
                 </svg>
               </span>
               <h3 className={s.serviceH3}>Airport Transfers</h3>
-              <p className={s.serviceP}>Direct collection or drop-off to King Shaka International. We co-ordinate with your flight schedule.</p>
-              <span className={s.serviceMeta}>From R250 / transfer <Arrow size={14} /></span>
-            </Link>
-            <Link href="/book" className={s.service}>
-              <span className={s.serviceIcon}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 3a4 4 0 014 4v0a4 4 0 11-8 0v0a4 4 0 014-4z" /><path d="M2 20c2-3 5-4 10-4s8 1 10 4" />
-                </svg>
-              </span>
-              <h3 className={s.serviceH3}>Beach Day Storage</h3>
-              <p className={s.serviceP}>Hourly lockers at Umhlanga Lighthouse &amp; Granny&apos;s Pool. Walk up, drop in, swim freely.</p>
-              <span className={s.serviceMeta}>From R30 / hour <Arrow size={14} /></span>
+              <p className={s.serviceP}>Direct collection or drop-off to King Shaka International, synced to your flight schedule.</p>
+              <span className={s.serviceMeta}>From R295 / trip <Arrow size={14} /></span>
             </Link>
           </div>
         </div>
@@ -260,52 +250,52 @@ export default function HomePage() {
           </div>
           <div className={s.pricing}>
             <div className={s.priceCard}>
-              <h3 className={s.priceH3}>Day Pass</h3>
-              <p className={s.priceDesc}>Perfect for early check-outs and beach days.</p>
+              <h3 className={s.priceH3}>Luggage Storage</h3>
+              <p className={s.priceDesc}>Drop your bags at our secure facility and collect when you're ready.</p>
               <div className={s.priceAmount}>
                 <span className={s.priceCurrency}>R</span>
-                <span className={s.priceNum}>45</span>
-                <span className={s.pricePer}>/ bag</span>
+                <span className={s.priceNum}>50</span>
+                <span className={s.pricePer}>/ bag / hr</span>
               </div>
-              <div className={s.priceNote}>Up to 12 hours of storage</div>
+              <div className={s.priceNote}>Cabin bag · Check-in R60/hr · Oversized R70/hr</div>
               <ul className={s.priceFeatures}>
-                <li><Check />Secure, monitored facility</li>
-                <li><Check />Insured up to R5,000</li>
-                <li><Check />Same-day collection</li>
+                <li><Check />Secure, 24/7 monitored facility</li>
+                <li><Check />Book any number of hours</li>
+                <li><Check />Insurance available</li>
               </ul>
-              <Link href="/book" className={`${s.btn} ${s.btnGhost} ${s.priceCta}`}>Get Started</Link>
+              <Link href="/book" className={`${s.btn} ${s.btnGhost} ${s.priceCta}`}>Store Bags</Link>
             </div>
             <div className={`${s.priceCard} ${s.priceFeatured}`}>
               <span className={s.priceBadge}>Most popular</span>
-              <h3 className={s.priceH3}>Traveller</h3>
-              <p className={s.priceDesc}>Storage + one door-to-door delivery.</p>
+              <h3 className={s.priceH3}>Door-to-Door</h3>
+              <p className={s.priceDesc}>We collect your bags and deliver them wherever you need.</p>
               <div className={s.priceAmount}>
                 <span className={s.priceCurrency}>R</span>
-                <span className={s.priceNum}>165</span>
-                <span className={s.pricePer}>/ bag</span>
+                <span className={s.priceNum}>300</span>
+                <span className={s.pricePer}>/ delivery</span>
               </div>
-              <div className={s.priceNote}>Includes 24h storage + 1 delivery</div>
+              <div className={s.priceNote}>R250 flat fee + R50/bag · across uMhlanga</div>
               <ul className={s.priceFeatures}>
-                <li><Check />Door-to-door across uMhlanga</li>
+                <li><Check />Collection & drop-off included</li>
                 <li><Check />Live tracking via WhatsApp</li>
-                <li><Check />Insured up to R10,000</li>
-                <li><Check />2-hour service windows</li>
+                <li><Check />Flexible time windows</li>
+                <li><Check />Insurance available</li>
               </ul>
-              <Link href="/book" className={`${s.btn} ${s.btnPrimary} ${s.priceCta}`}>Book Traveller</Link>
+              <Link href="/book" className={`${s.btn} ${s.btnPrimary} ${s.priceCta}`}>Book Delivery</Link>
             </div>
             <div className={s.priceCard}>
-              <h3 className={s.priceH3}>Airport</h3>
-              <p className={s.priceDesc}>All-in transfer between you and King Shaka.</p>
+              <h3 className={s.priceH3}>Airport Transfer</h3>
+              <p className={s.priceDesc}>Direct collection or drop-off to King Shaka International.</p>
               <div className={s.priceAmount}>
                 <span className={s.priceCurrency}>R</span>
                 <span className={s.priceNum}>295</span>
                 <span className={s.pricePer}>/ trip</span>
               </div>
-              <div className={s.priceNote}>Direct collection or drop-off</div>
+              <div className={s.priceNote}>Up to 3 bags · +R50 per extra bag</div>
               <ul className={s.priceFeatures}>
                 <li><Check />Synced to your flight time</li>
-                <li><Check />Up to 3 bags included</li>
                 <li><Check />Pickup at any KZN address</li>
+                <li><Check />Insurance available</li>
               </ul>
               <Link href="/book" className={`${s.btn} ${s.btnGhost} ${s.priceCta}`}>Book Transfer</Link>
             </div>
@@ -329,7 +319,7 @@ export default function HomePage() {
             {[
               { initials: 'SM', name: 'Sarah M.', role: 'Visiting from Cape Town', quote: '"Checked out of our Airbnb at 10am, flight wasn\'t until 8pm. Airhost stored everything and dropped us at King Shaka right on time. Genuine lifesavers."' },
               { initials: 'JT', name: 'James T.', role: 'Airbnb Superhost · Umhlanga', quote: '"I run three Airbnbs in Umhlanga Rocks and Airhost is now part of every check-in. The WhatsApp tracking gives guests confidence the second they book."' },
-              { initials: 'EL', name: 'Emma & Luke', role: 'Locals · Durban North', quote: '"Used the beach day lockers at the Lighthouse — R30 well spent. Came back to dry bags, no sand, and the friendliest team. Will use every weekend."' },
+              { initials: 'EL', name: 'Emma & Luke', role: 'Locals · Durban North', quote: '"Left our bags at Beacon Rock for the day — total peace of mind while we explored uMhlanga. Collected on the way home. Incredibly easy and the team was so friendly."' },
             ].map(({ initials, name, role, quote }) => (
               <div key={initials} className={s.testimonial}>
                 <span className={s.stars} aria-hidden="true">

@@ -6,18 +6,16 @@ import { useState, useMemo, useEffect, useRef, ReactNode } from 'react'
 type SizeId = 'S' | 'M' | 'L'
 interface ServiceData { id: string; title: string; desc: string; badge: string | null; icon: ReactNode; hours: string; color: string; colorBg: string; base: number; unit: string }
 interface FacilityData { id: string; name: string; addr: string; hours: string; distance: string; availability: 'high' | 'low'; icon: ReactNode }
-interface LockerData { id: string; name: string; addr: string; hours: string; available: number; total: number; icon: ReactNode }
 interface SpecialItem { id: string; label: string; sub: string; price: number; icon: ReactNode }
 interface SizeData { id: SizeId; label: string; lim: string }
-interface DurationData { id: string; label: string; sub: string; hours: number; icon: ReactNode }
 interface PriceLine { label: string; amount: number; discount?: boolean }
 interface Details { name: string; phone: string; email: string; whatsapp: boolean; airline: string; flight: string }
 interface Bags { S: number; M: number; L: number }
 interface LocationData { name: string; addr: string; area?: string; outOfArea?: boolean }
 interface BookingState {
-  service: string; pickup: string; dropoff: string; facility: string; locker: string
+  service: string; pickup: string; dropoff: string; facility: string
   direction: 'to' | 'from'; date: Date; time: string; endDate: Date; endTime: string
-  duration: string; bags: Bags; hours: number; extras: string[]
+  bags: Bags; hours: number; extras: string[]
   details: Details; recipient: { name: string; phone: string }; insurance: boolean
 }
 
@@ -26,7 +24,6 @@ const Ico = {
   Box:      ({ n = 22 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="7" width="14" height="14" rx="2"/><path d="M9 7V4h6v3"/><path d="M9 12h6M9 16h6"/></svg>,
   Home:     ({ n = 22 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-6 9 6v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>,
   Plane:    ({ n = 22 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>,
-  Sun:      ({ n = 22 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5.6 5.6L4.2 4.2M19.8 19.8l-1.4-1.4M5.6 18.4l-1.4 1.4M19.8 4.2l-1.4 1.4"/></svg>,
   Arrow:    ({ n = 16 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>,
   Back:     ({ n = 18 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>,
   Close:    ({ n = 16 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>,
@@ -45,10 +42,8 @@ const Ico = {
   WA:       ({ n = 16 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A11.8 11.8 0 0012 0C5.4 0 0 5.4 0 12c0 2.1.6 4.1 1.6 5.9L0 24l6.3-1.6A12 12 0 0012 24c6.6 0 12-5.4 12-12 0-3.2-1.2-6.2-3.5-8.5zM12 22c-1.8 0-3.6-.5-5.1-1.4l-.4-.2-3.7 1 1-3.6-.2-.4A9.8 9.8 0 1112 22z"/></svg>,
   Wallet:   ({ n = 18 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M16 14h2"/><path d="M2 10h20"/></svg>,
   Spark:    ({ n = 14 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 4.7L18 8l-4.2 1.6L12 14l-1.8-4.4L6 8l4.2-1.3z"/></svg>,
-  Wave:     ({ n = 28 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 7c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></svg>,
   Lock:     ({ n = 22 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>,
   Building: ({ n = 22 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h.01M15 8h.01M9 12h.01M15 12h.01M9 16h.01M15 16h.01"/></svg>,
-  Umbrella: ({ n = 22 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v2"/><path d="M2 12C2 7 6.5 3 12 3s10 4 10 9z"/><path d="M12 12v6a3 3 0 003 3"/></svg>,
   Departure:({ n = 18 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M22 12.5a1.5 1.5 0 01-2 1.4L4 9V4l3 1 3 4 6.5-1.8a2 2 0 012.4 1.4z"/></svg>,
   Arrival:  ({ n = 18 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M3 12.5a1.5 1.5 0 002 1.4L21 9V4l-3 1-3 4-6.5-1.8a2 2 0 00-2.4 1.4z"/></svg>,
   User:     ({ n = 16 }: { n?: number }) => <svg width={n} height={n} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>,
@@ -60,19 +55,12 @@ const SERVICES: ServiceData[] = [
   { id: 'storage', title: 'Luggage Storage',       desc: 'Secure storage by the hour at our Umhlanga facility.',            badge: null,      icon: <Ico.Box />,   hours: '07:00 – 21:00', color: 'var(--ocean)', colorBg: 'var(--ocean-50)', base: 50,  unit: 'per bag / hour' },
   { id: 'door',    title: 'Door-to-Door Delivery', desc: 'Hotel to Airbnb, Airbnb to villa — same-day routed delivery.',   badge: 'Popular', icon: <Ico.Home />,  hours: '08:00 – 18:00', color: 'var(--sky)',   colorBg: 'var(--sky-50)',   base: 300, unit: 'per delivery, 1 cabin bag' },
   { id: 'airport', title: 'King Shaka Transfer',   desc: 'Synced to your flight — pickup from any KZN address.',           badge: 'New',     icon: <Ico.Plane />, hours: '05:00 – 22:00', color: 'var(--deep)', colorBg: 'var(--deep-50)',  base: 295, unit: 'per trip' },
-  { id: 'beach',   title: 'Beach Day Storage',     desc: "Walk-up lockers at Umhlanga Lighthouse & Granny's Pool.",        badge: null,      icon: <Ico.Sun />,   hours: '06:00 – 19:00', color: 'var(--pale)', colorBg: 'var(--pale-50)',  base: 30,  unit: 'per bag / hour' },
 ]
 const STORAGE_SIZE_RATE: Record<SizeId, number> = { S: 50, M: 60, L: 70 }
 const STORAGE_HOURS = [1, 2, 3, 4, 5, 6, 8, 10, 12]
 
 const STORAGE_FACILITIES: FacilityData[] = [
   { id: 'beacon', name: 'Beacon Rock', addr: '21 Lighthouse Road, Umhlanga Rocks', hours: '07:00 – 21:00', distance: 'A few minutes from the Village & Promenade', availability: 'high', icon: <Ico.Building n={20} /> },
-]
-const BEACH_LOCKERS: LockerData[] = [
-  { id: 'lighthouse', name: 'Umhlanga Lighthouse', addr: 'Lighthouse Rd Promenade',    hours: '06:00 – 19:00', available: 14, total: 24, icon: <Ico.Umbrella n={20} /> },
-  { id: 'grannys',    name: "Granny's Pool",        addr: 'North Beach Promenade',      hours: '06:00 – 19:00', available: 7,  total: 18, icon: <Ico.Umbrella n={20} /> },
-  { id: 'bronze',     name: 'Bronze Beach',         addr: 'Lagoon Dr Boardwalk',        hours: '07:00 – 18:00', available: 16, total: 20, icon: <Ico.Umbrella n={20} /> },
-  { id: 'westbrook',  name: 'Westbrook Beach',      addr: 'Westbrook Pkwy, La Mercy',   hours: '07:00 – 18:00', available: 3,  total: 12, icon: <Ico.Umbrella n={20} /> },
 ]
 const PRESET_LOCATIONS: LocationData[] = [
   { name: 'The Oyster Box',                  addr: '2 Lighthouse Rd, Umhlanga Rocks',        area: 'Umhlanga' },
@@ -106,11 +94,6 @@ const SIZES: SizeData[] = [
   { id: 'S', label: 'Cabin',     lim: 'Up to 7kg' },
   { id: 'M', label: 'Check-in',  lim: '8–23kg' },
   { id: 'L', label: 'Oversized', lim: '24–32kg' },
-]
-const DURATIONS: DurationData[] = [
-  { id: '1h',   label: '1 Hour',   sub: 'Quick swim', hours: 1, icon: <Ico.Clock n={20} /> },
-  { id: 'half', label: 'Half Day', sub: '4 hours',    hours: 4, icon: <Ico.Sun n={20} /> },
-  { id: 'full', label: 'All Day',  sub: '8 hours',    hours: 8, icon: <Ico.Umbrella n={20} /> },
 ]
 
 // ─── Step routing ─────────────────────────────────────────────────────────────
@@ -282,7 +265,6 @@ function StepService({ value, onChange }: { value: string; onChange: (id: string
 // ─── STEP 2 — Where ───────────────────────────────────────────────────────────
 function StepWhere({ service, state, set }: { service: ServiceData; state: BookingState; set: (p: Partial<BookingState>) => void }) {
   if (service.id === 'storage') return <WhereStorage state={state} set={set} />
-  if (service.id === 'beach')   return <WhereBeach   state={state} set={set} />
   if (service.id === 'airport') return <WhereAirport state={state} set={set} />
   return <WhereDoor state={state} set={set} />
 }
@@ -312,29 +294,6 @@ function WhereStorage({ state, set }: { state: BookingState; set: (p: Partial<Bo
   )
 }
 
-function WhereBeach({ state, set }: { state: BookingState; set: (p: Partial<BookingState>) => void }) {
-  return (
-    <div>
-      <h1 className="step-title">Choose your beach locker</h1>
-      <p className="step-sub">Walk-up, self-service lockers. We&apos;ll send a 4-digit unlock code instantly.</p>
-      {BEACH_LOCKERS.map(l => {
-        const ratio  = l.available / l.total
-        const status = ratio > 0.4 ? 'high' : 'low'
-        return (
-          <button key={l.id} className={'facility-card' + (state.locker === l.id ? ' selected' : '')} onClick={() => set({ locker: l.id })}>
-            <span className="fc-ic" style={{ background: state.locker === l.id ? 'var(--ocean)' : 'var(--sky-50)', color: state.locker === l.id ? '#fff' : 'var(--sky)' }}>{l.icon}</span>
-            <div className="fc-body">
-              <div className="fc-name">{l.name}<span className={'availability ' + status}>{l.available} / {l.total} free</span></div>
-              <div className="fc-addr">{l.addr}</div>
-              <div className="fc-meta"><span className="chip"><Ico.Clock />{l.hours}</span><span className="pin"><Ico.Wave n={12} />Beachfront</span></div>
-            </div>
-            <span className="fc-radio">{state.locker === l.id && <Ico.Check n={12} />}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
 
 function WhereAirport({ state, set }: { state: BookingState; set: (p: Partial<BookingState>) => void }) {
   return (
@@ -382,7 +341,6 @@ function WhereDoor({ state, set }: { state: BookingState; set: (p: Partial<Booki
 // ─── STEP 3 — When ────────────────────────────────────────────────────────────
 function StepWhen({ service, state, set }: { service: ServiceData; state: BookingState; set: (p: Partial<BookingState>) => void }) {
   if (service.id === 'storage') return <WhenStorage state={state} set={set} />
-  if (service.id === 'beach')   return <WhenBeach   state={state} set={set} />
   return <WhenDefault state={state} set={set} service={service} />
 }
 
@@ -442,29 +400,6 @@ function WhenStorage({ state, set }: { state: BookingState; set: (p: Partial<Boo
   )
 }
 
-function WhenBeach({ state, set }: { state: BookingState; set: (p: Partial<BookingState>) => void }) {
-  return (
-    <div>
-      <h1 className="step-title">When&apos;s beach time?</h1>
-      <p className="step-sub">Lockers unlock the moment you arrive — pick how long you&apos;ll need it.</p>
-      <div className="section-label">Start time today</div>
-      <div className="time-grid" style={{ marginBottom: 22 }}>
-        {TIME_SLOTS.map(t => <button key={t} className={'time-slot' + (state.time === t ? ' selected' : '')} onClick={() => set({ time: t })}>{t}</button>)}
-      </div>
-      <div className="section-label">How long?</div>
-      <div className="duration-grid">
-        {DURATIONS.map(d => (
-          <button key={d.id} className={'duration-card' + (state.duration === d.id ? ' selected' : '')} onClick={() => set({ duration: d.id })}>
-            <div className="ic">{d.icon}</div>
-            <div className="lbl">{d.label}</div>
-            <div className="sub">{d.sub}</div>
-          </button>
-        ))}
-      </div>
-      <div className="duration-hint"><Ico.Sun /> Sunset is at 17:42 today — we&apos;ll send a reminder 30 min before closing.</div>
-    </div>
-  )
-}
 
 function WhenDefault({ state, set, service }: { state: BookingState; set: (p: Partial<BookingState>) => void; service: ServiceData }) {
   const today    = new Date(); today.setHours(0,0,0,0)
@@ -612,8 +547,6 @@ interface ReviewProps {
 }
 function StepReview({ service, state, breakdown, payMethod, setPayMethod, promo, setPromo, promoApplied, applyPromo, set }: ReviewProps) {
   const facility = STORAGE_FACILITIES.find(f => f.id === state.facility)
-  const locker   = BEACH_LOCKERS.find(l => l.id === state.locker)
-  const duration = DURATIONS.find(d => d.id === state.duration)
   const bagCount = totalBags(state.bags)
   const bagDesc  = SIZES.filter(s => (state.bags?.[s.id] || 0) > 0)
     .map(s => `${state.bags[s.id]} ${s.label.toLowerCase()}`).join(', ') || '—'
@@ -640,11 +573,6 @@ function StepReview({ service, state, breakdown, payMethod, setPayMethod, promo,
           <div className="review-row"><span className="k">Address</span><span className="v">{state.pickup || '—'}</span></div>
           <div className="review-row"><span className="k">Flight</span><span className="v">{state.details.airline} {state.details.flight}</span></div>
           <div className="review-row"><span className="k">When</span><span className="v">{fmtDay(state.date)} · {state.time}</span></div>
-        </>}
-        {service.id === 'beach' && <>
-          <div className="review-row"><span className="k">Locker site</span><span className="v">{locker?.name || '—'}</span></div>
-          <div className="review-row"><span className="k">Start</span><span className="v">Today · {state.time}</span></div>
-          <div className="review-row"><span className="k">Duration</span><span className="v">{duration?.label}</span></div>
         </>}
         <div className="review-row"><span className="k">Bags</span><span className="v">{bagDesc}</span></div>
       </div>
@@ -709,7 +637,6 @@ function FakeQR({ seed }: { seed: string }) {
 // ─── STEP 7 — Done ────────────────────────────────────────────────────────────
 function StepDone({ service, state, breakdown, refCode, onRestart }: { service: ServiceData; state: BookingState; breakdown: { lines: PriceLine[]; total: number }; refCode: string; onRestart: () => void }) {
   const facility   = STORAGE_FACILITIES.find(f => f.id === state.facility)
-  const locker     = BEACH_LOCKERS.find(l => l.id === state.locker)
   const bagCount   = totalBags(state.bags)
   const bagDesc    = SIZES.filter(s => (state.bags?.[s.id] || 0) > 0)
     .map(s => `${state.bags[s.id]} ${s.label.toLowerCase()}`).join(', ')
@@ -718,12 +645,11 @@ function StepDone({ service, state, breakdown, refCode, onRestart }: { service: 
       <div className="success-circle">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
       </div>
-      <h2>{service.id === 'beach' ? "You're in!" : "You're all set!"}</h2>
+      <h2>You&apos;re all set!</h2>
       <p>
         {service.id === 'storage' && "We've sent your claim ticket to WhatsApp. Show the QR when you drop off and again to collect."}
         {service.id === 'door'    && "A driver will be assigned 30 min before pickup. You'll get a tracking link via WhatsApp."}
         {service.id === 'airport' && "We've linked your flight — if it changes, we'll adjust automatically."}
-        {service.id === 'beach'   && 'Tap your code below at the locker keypad to unlock. The locker is yours for the booked window.'}
       </p>
       <div className="booking-ref">
         <div className="label">Booking reference</div>
@@ -766,16 +692,6 @@ function StepDone({ service, state, breakdown, refCode, onRestart }: { service: 
           </div>
         </div>
       )}
-      {service.id === 'beach' && (
-        <div className="ticket" style={{ textAlign: 'center', padding: '24px 20px' }}>
-          <div className="unlock-label">Locker unlock code</div>
-          <div className="unlock-code">{refCode.split('-')[1]?.slice(0, 4)}</div>
-          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--navy-12)', display: 'flex', justifyContent: 'space-around', fontSize: 12 }}>
-            <div><div style={{ color: 'var(--navy-50)' }}>Site</div><div style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 600, marginTop: 2 }}>{locker?.name}</div></div>
-            <div><div style={{ color: 'var(--navy-50)' }}>Until</div><div style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 600, marginTop: 2 }}>{state.time} +{DURATIONS.find(d => d.id === state.duration)?.hours}h</div></div>
-          </div>
-        </div>
-      )}
       <div className="review-section" style={{ width: '100%', textAlign: 'left' }}>
         <h4>Total paid</h4>
         <div className="review-row" style={{ paddingTop: 0, paddingBottom: 0 }}>
@@ -787,7 +703,7 @@ function StepDone({ service, state, breakdown, refCode, onRestart }: { service: 
         <a className="btn-wa" href="https://wa.me/27000000000" target="_blank" rel="noopener noreferrer">
           <Ico.WA /> {service.id === 'door' ? 'Chat to your driver' : 'Open in WhatsApp'}
         </a>
-        {service.id !== 'door' && <button className="btn-wallet"><Ico.Wallet /> Add to Apple Wallet</button>}
+        {(service.id === 'storage' || service.id === 'airport') && <button className="btn-wallet"><Ico.Wallet /> Add to Apple Wallet</button>}
         <button className="chip-btn" style={{ marginTop: 6, padding: '10px 18px' }} onClick={onRestart}>Book another</button>
       </div>
     </div>
@@ -840,9 +756,9 @@ function BookingApp() {
   const tomorrow = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 1); return d }, [today])
 
   const [state, setState] = useState<BookingState>({
-    service: 'door', pickup: 'The Oyster Box', dropoff: '', facility: 'beacon', locker: 'lighthouse',
+    service: 'door', pickup: 'The Oyster Box', dropoff: '', facility: 'beacon',
     direction: 'to', date: tomorrow, time: '11:00', endDate: new Date(tomorrow.getTime() + 2 * 86400000), endTime: '11:00',
-    duration: 'half', bags: { S: 1, M: 0, L: 0 }, hours: 1, extras: [],
+    bags: { S: 1, M: 0, L: 0 }, hours: 1, extras: [],
     details: { name: '', phone: '', email: '', whatsapp: true, airline: '', flight: '' },
     recipient: { name: '', phone: '' }, insurance: false,
   })
@@ -873,10 +789,6 @@ function BookingApp() {
           base += amt
         }
       })
-    } else if (service.id === 'beach') {
-      const h = DURATIONS.find(d => d.id === state.duration)?.hours ?? 1
-      base = service.base * bagCount * h
-      lines.push({ label: `Beach locker · ${bagCount} bag${bagCount > 1 ? 's' : ''} × ${h}h`, amount: base })
     } else if (service.id === 'airport') {
       base = service.base
       lines.push({ label: 'Airport transfer · base fare', amount: base })
@@ -900,8 +812,8 @@ function BookingApp() {
       })
     }
 
-    // Oversized handling (airport & beach only — storage and door already price by size)
-    if (service.id !== 'storage' && service.id !== 'door' && bags.L > 0) {
+    // Oversized handling (airport only — storage and door already price by size)
+    if (service.id === 'airport' && bags.L > 0) {
       const xl = 30 * bags.L
       lines.push({ label: `Oversized handling × ${bags.L}`, amount: xl })
     }
@@ -922,13 +834,11 @@ function BookingApp() {
       case 'service': return !!state.service
       case 'where': {
         if (service.id === 'storage') return !!state.facility
-        if (service.id === 'beach')   return !!state.locker
         if (service.id === 'airport') return !!state.pickup && !!state.direction
         return !!state.pickup && !!state.dropoff
       }
       case 'when': {
         if (service.id === 'storage') return !!(state.date && state.time && state.hours)
-        if (service.id === 'beach')   return !!(state.time && state.duration)
         return !!(state.date && state.time)
       }
       case 'bags': return totalBags(state.bags) > 0
@@ -975,10 +885,6 @@ function BookingApp() {
     if (currentKey === 'service') return service.unit
     const bagPart = `${bagCount} bag${bagCount !== 1 ? 's' : ''}`
     if (service.id === 'storage') return `${bagPart} · ${state.hours || 1}h${state.insurance ? ' · insured' : ''}`
-    if (service.id === 'beach') {
-      const h = DURATIONS.find(d => d.id === state.duration)?.hours || 1
-      return `${bagPart} · ${h}h${state.insurance ? ' · insured' : ''}`
-    }
     return `${bagPart}${state.insurance ? ' · insured' : ''}`
   })()
 
