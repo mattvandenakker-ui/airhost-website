@@ -164,19 +164,36 @@ function CalendarPicker({ value, setValue, minDate }: { value: Date; setValue: (
 }
 
 // ─── Address Input ────────────────────────────────────────────────────────────
+const SERVICE_AREA_RE = /umhlanga|la lucia|ballito|salt rock|tongaat|durban|kwazulu|kzn|king shaka|phoenix|la mercy|umdloti|westbrook/i
+
+interface PlacePrediction { description: string; outOfArea: boolean }
+
 function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocean)' }: { value: string; onChange: (v: string) => void; placeholder: string; label: string; color?: string }) {
   const [focused, setFocused] = useState(false)
-  const suggestions = useMemo(() => {
-    if (!focused) return []
-    const q = (value || '').toLowerCase().trim()
-    if (!q) return PRESET_LOCATIONS.filter(p => !p.outOfArea).slice(0, 6)
-    const matches = PRESET_LOCATIONS.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      p.addr.toLowerCase().includes(q) ||
-      (p.area && p.area.toLowerCase().includes(q))
-    )
-    return matches.sort((a, b) => (a.outOfArea ? 1 : 0) - (b.outOfArea ? 1 : 0)).slice(0, 6)
+  const [results, setResults] = useState<PlacePrediction[]>([])
+  const [loading, setLoading] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!focused || !value.trim()) { setResults([]); return }
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const res = await fetch(`/api/places?input=${encodeURIComponent(value)}`)
+        const data = await res.json()
+        setResults((data.predictions || []).map((p: { description: string }) => ({
+          description: p.description,
+          outOfArea: !SERVICE_AREA_RE.test(p.description),
+        })))
+      } catch { setResults([]) }
+      finally { setLoading(false) }
+    }, 300)
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
   }, [value, focused])
+
+  const showFamiliar = focused && !value.trim()
+
   return (
     <div className="input-group">
       <span className="input-label">{label}</span>
@@ -184,17 +201,31 @@ function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocea
         <span className="lead" style={{ color }}><Ico.Pin n={18} /></span>
         <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
           onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)} />
+        {loading && <span className="input-spinner" />}
       </div>
-      {suggestions.length > 0 && (
+      {showFamiliar && (
         <div className="suggestions">
-          {!value && <div className="suggestions-header">Familiar addresses</div>}
-          {suggestions.map(s => (
-            <button key={s.name} className={'suggestion' + (s.outOfArea ? ' out-of-area' : '')}
+          <div className="suggestions-header">Familiar addresses</div>
+          {PRESET_LOCATIONS.filter(p => !p.outOfArea).slice(0, 5).map(s => (
+            <button key={s.name} className="suggestion"
               onMouseDown={e => { e.preventDefault(); onChange(s.name); setFocused(false) }}>
               <span className="ic"><Ico.Pin n={14} /></span>
               <div>
-                <div className="name">{s.name}{s.outOfArea && <span className="oos-tag">Outside service area</span>}</div>
+                <div className="name">{s.name}</div>
                 <div className="addr">{s.addr}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {!showFamiliar && results.length > 0 && (
+        <div className="suggestions">
+          {results.map(r => (
+            <button key={r.description} className={'suggestion' + (r.outOfArea ? ' out-of-area' : '')}
+              onMouseDown={e => { e.preventDefault(); onChange(r.description); setFocused(false); setResults([]) }}>
+              <span className="ic"><Ico.Pin n={14} /></span>
+              <div>
+                <div className="name">{r.description}{r.outOfArea && <span className="oos-tag">Outside service area</span>}</div>
               </div>
             </button>
           ))}
