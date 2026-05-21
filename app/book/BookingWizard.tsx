@@ -163,6 +163,21 @@ function CalendarPicker({ value, setValue, minDate }: { value: Date; setValue: (
   )
 }
 
+// ─── Google Maps loader (singleton) ──────────────────────────────────────────
+let _gmReady = false
+let _gmQueue: (() => void)[] = []
+function loadGooglePlaces(onReady: () => void) {
+  if (_gmReady) { onReady(); return }
+  _gmQueue.push(onReady)
+  if (document.getElementById('gm-places-script')) return
+  const s = document.createElement('script')
+  s.id = 'gm-places-script'
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_KEY}&libraries=places`
+  s.async = true
+  s.onload = () => { _gmReady = true; _gmQueue.forEach(fn => fn()); _gmQueue = [] }
+  document.head.appendChild(s)
+}
+
 // ─── Address Input ────────────────────────────────────────────────────────────
 const SERVICE_AREA_RE = /umhlanga|la lucia|ballito|salt rock|tongaat|durban|kwazulu|kzn|king shaka|phoenix|la mercy|umdloti|westbrook/i
 
@@ -172,25 +187,35 @@ function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocea
   const [focused, setFocused] = useState(false)
   const [results, setResults] = useState<PlacePrediction[]>([])
   const [loading, setLoading] = useState(false)
+  const [gmReady, setGmReady] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const svcRef = useRef<any>(null)
+
+  useEffect(() => { loadGooglePlaces(() => setGmReady(true)) }, [])
 
   useEffect(() => {
     if (!focused || !value.trim()) { setResults([]); return }
+    if (!gmReady) return
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(async () => {
+    timerRef.current = setTimeout(() => {
       setLoading(true)
-      try {
-        const res = await fetch(`/api/places?input=${encodeURIComponent(value)}`)
-        const data = await res.json()
-        setResults((data.predictions || []).map((p: { description: string }) => ({
-          description: p.description,
-          outOfArea: !SERVICE_AREA_RE.test(p.description),
-        })))
-      } catch { setResults([]) }
-      finally { setLoading(false) }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const g = (window as any).google.maps
+      if (!svcRef.current) svcRef.current = new g.places.AutocompleteService()
+      svcRef.current.getPlacePredictions(
+        { input: value, componentRestrictions: { country: 'za' }, location: new g.LatLng(-29.7269, 31.0824), radius: 40000 },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (predictions: any[], status: string) => {
+          setLoading(false)
+          if (status === 'OK' && predictions) {
+            setResults(predictions.map(p => ({ description: p.description, outOfArea: !SERVICE_AREA_RE.test(p.description) })))
+          } else { setResults([]) }
+        }
+      )
     }, 300)
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [value, focused])
+  }, [value, focused, gmReady])
 
   const showFamiliar = focused && !value.trim()
 
