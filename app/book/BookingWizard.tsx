@@ -172,7 +172,7 @@ function loadGooglePlaces(onReady: () => void) {
   if (document.getElementById('gm-places-script')) return
   const s = document.createElement('script')
   s.id = 'gm-places-script'
-  s.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_KEY}&libraries=places&v=weekly`
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_KEY}&v=weekly`
   s.async = true
   s.onload = () => { _gmReady = true; _gmQueue.forEach(fn => fn()); _gmQueue = [] }
   s.onerror = () => console.error('[Places] Failed to load Google Maps — check Maps JavaScript API is enabled')
@@ -203,7 +203,7 @@ function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocea
       setLoading(true)
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { AutocompleteSuggestion } = (window as any).google.maps.places
+        const { AutocompleteSuggestion } = await (window as any).google.maps.importLibrary('places')
         const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
           input: value,
           includedRegionCodes: ['za'],
@@ -211,10 +211,10 @@ function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocea
         })
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setResults((suggestions || []).map((s: any) => {
-          const desc = s.placePrediction?.text?.text || s.placePrediction?.toString() || ''
+          const desc = s.placePrediction?.text?.text || ''
           return { description: desc, outOfArea: !SERVICE_AREA_RE.test(desc) }
         }))
-      } catch { setResults([]) }
+      } catch (e) { console.error('[Places]', e); setResults([]) }
       finally { setLoading(false) }
     }, 300)
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
@@ -387,7 +387,7 @@ function WhereDoor({ state, set }: { state: BookingState; set: (p: Partial<Booki
       <h1 className="step-title">Where shall we collect?</h1>
       <p className="step-sub">Search any South African address — we currently operate inside uMhlanga and the immediate KZN coast.</p>
       <MapTile />
-      <AddressInput label="Pickup"   value={state.pickup}  onChange={v => set({ pickup: v })}  placeholder="Search hotel, address, or area" />
+      <AddressInput label="Pickup"   value={state.pickup}  onChange={v => set({ pickup: v })}  placeholder="Where should we pick up?" />
       <AddressInput label="Drop-off" value={state.dropoff} onChange={v => set({ dropoff: v })} placeholder="Where should we deliver?" color="var(--sky)" />
       <div className="service-area-note">
         <Ico.Pin n={14} />
@@ -815,7 +815,7 @@ function BookingApp() {
   const tomorrow = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 1); return d }, [today])
 
   const [state, setState] = useState<BookingState>({
-    service: 'door', pickup: 'The Oyster Box', dropoff: '', facility: 'beacon',
+    service: 'door', pickup: '', dropoff: '', facility: 'beacon',
     direction: 'to', date: tomorrow, time: '11:00', endDate: new Date(tomorrow.getTime() + 2 * 86400000), endTime: '11:00',
     bags: { S: 1, M: 0, L: 0 }, hours: 1, extras: [],
     details: { name: '', phone: '', email: '', whatsapp: true, airline: '', flight: '' },
