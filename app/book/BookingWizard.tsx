@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type SizeId = 'S' | 'M' | 'L'
@@ -806,6 +807,7 @@ function FooterBar({ totalLabel, total, qtyLabel, ctaLabel, onClick, disabled, l
 
 // ─── Main App (orchestrator) ──────────────────────────────────────────────────
 function BookingApp() {
+  const router = useRouter()
   const [step, setStep]             = useState(0)
   const [direction, setDirection]   = useState<'fwd' | 'back'>('fwd')
   const [loading, setLoading]       = useState(false)
@@ -926,7 +928,7 @@ function BookingApp() {
     setDirection('fwd')
     setStep(s => Math.min(stepKeys.length - 1, s + 1))
   }
-  const handleBack  = () => { setDirection('back'); setStep(s => Math.max(0, s - 1)) }
+  const handleBack  = () => { if (step === 0) { router.push('/') } else { setDirection('back'); setStep(s => s - 1) } }
   const handleClose = () => { if (typeof window !== 'undefined' && window.confirm('Cancel this booking?')) { setDirection('back'); setStep(0) } }
   const applyPromo  = () => {
     const codes: Record<string, { code: string; type: string; value: number; label: string }> = {
