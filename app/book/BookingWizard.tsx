@@ -172,9 +172,10 @@ function loadGooglePlaces(onReady: () => void) {
   if (document.getElementById('gm-places-script')) return
   const s = document.createElement('script')
   s.id = 'gm-places-script'
-  s.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_KEY}&libraries=places`
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_KEY}&libraries=places&v=weekly`
   s.async = true
   s.onload = () => { _gmReady = true; _gmQueue.forEach(fn => fn()); _gmQueue = [] }
+  s.onerror = () => console.error('[Places] Failed to load Google Maps — check Maps JavaScript API is enabled')
   document.head.appendChild(s)
 }
 
@@ -198,21 +199,23 @@ function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocea
     if (!focused || !value.trim()) { setResults([]); return }
     if (!gmReady) return
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => {
+    timerRef.current = setTimeout(async () => {
       setLoading(true)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const g = (window as any).google.maps
-      if (!svcRef.current) svcRef.current = new g.places.AutocompleteService()
-      svcRef.current.getPlacePredictions(
-        { input: value, componentRestrictions: { country: 'za' }, location: new g.LatLng(-29.7269, 31.0824), radius: 40000 },
+      try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (predictions: any[], status: string) => {
-          setLoading(false)
-          if (status === 'OK' && predictions) {
-            setResults(predictions.map(p => ({ description: p.description, outOfArea: !SERVICE_AREA_RE.test(p.description) })))
-          } else { setResults([]) }
-        }
-      )
+        const { AutocompleteSuggestion } = (window as any).google.maps.places
+        const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+          input: value,
+          includedRegionCodes: ['za'],
+          locationBias: { center: { lat: -29.7269, lng: 31.0824 }, radius: 40000 },
+        })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setResults((suggestions || []).map((s: any) => {
+          const desc = s.placePrediction?.text?.text || s.placePrediction?.toString() || ''
+          return { description: desc, outOfArea: !SERVICE_AREA_RE.test(desc) }
+        }))
+      } catch { setResults([]) }
+      finally { setLoading(false) }
     }, 300)
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
   }, [value, focused, gmReady])
