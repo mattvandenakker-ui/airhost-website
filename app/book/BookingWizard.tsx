@@ -125,7 +125,6 @@ function buildCalendar(year: number, month: number): (Date | null)[] {
 }
 const fmtDay  = (d: Date | null) => d ? d.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'
 const sameDay = (a: Date | null, b: Date | null) => !!(a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate())
-const daysBetween = (a: Date, b: Date) => Math.max(1, Math.round((b.getTime() - a.getTime()) / 86400000))
 
 // ─── CalendarPicker ───────────────────────────────────────────────────────────
 function CalendarPicker({ value, setValue, minDate }: { value: Date; setValue: (d: Date) => void; minDate?: Date }) {
@@ -191,8 +190,7 @@ function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocea
   const [loading, setLoading] = useState(false)
   const [gmReady, setGmReady] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const svcRef = useRef<any>(null)
+
 
   useEffect(() => { loadGooglePlaces(() => setGmReady(true)) }, [])
 
@@ -776,7 +774,7 @@ function AppHeader({ step, totalSteps, onBack, onClose }: { step: number; totalS
   return (
     <div className="bk-app-header">
       <div className="bk-header-row">
-        <button className="bk-icon-btn" aria-label="Back" onClick={onBack} disabled={step === 0}><Ico.Back /></button>
+        <button className="bk-icon-btn" aria-label="Back" onClick={onBack}><Ico.Back /></button>
         <div className="bk-step-counter">
           {step < totalSteps - 1 ? (<>Step <b>{step + 1}</b> of <b>{totalSteps - 1}</b></>) : (<span style={{ color: 'var(--ocean)', fontWeight: 700 }}>Confirmed</span>)}
         </div>
@@ -929,7 +927,7 @@ function BookingApp() {
     setStep(s => Math.min(stepKeys.length - 1, s + 1))
   }
   const handleBack  = () => { if (step === 0) { router.push('/') } else { setDirection('back'); setStep(s => s - 1) } }
-  const handleClose = () => { if (typeof window !== 'undefined' && window.confirm('Cancel this booking?')) { setDirection('back'); setStep(0) } }
+  const handleClose = () => { router.push('/') }
   const applyPromo  = () => {
     const codes: Record<string, { code: string; type: string; value: number; label: string }> = {
       WELCOME10: { code: 'WELCOME10', type: 'pct',  value: 10, label: '10% off your first booking' },
