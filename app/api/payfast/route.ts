@@ -32,7 +32,11 @@ export async function POST(req: NextRequest) {
     m_payment_id:  booking.bookingId,
     amount,
     item_name:     itemName,
-    custom_str1:   JSON.stringify(booking),
+    custom_str1:   booking.bookingId,
+    custom_str2:   booking.service,
+    custom_str3:   booking.pickup || '',
+    custom_str4:   booking.dropoff || '',
+    custom_str5:   booking.date ? booking.date.slice(0, 10) : '',
   }
 
   const signature = generateSignature(data, PASSPHRASE)

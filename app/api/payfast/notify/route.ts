@@ -30,14 +30,16 @@ export async function POST(req: NextRequest) {
   }
 
   if (params.payment_status === 'COMPLETE') {
-    const booking = JSON.parse(params.custom_str1 || '{}')
     console.log('[PayFast ITN] Payment complete:', {
-      paymentId:  params.pf_payment_id,
-      amount:     params.amount_gross,
-      bookingId:  params.m_payment_id,
-      customer:   `${params.name_first} ${params.name_last}`,
-      email:      params.email_address,
-      service:    booking.serviceLabel,
+      paymentId: params.pf_payment_id,
+      amount:    params.amount_gross,
+      bookingId: params.m_payment_id,
+      customer:  `${params.name_first} ${params.name_last}`,
+      email:     params.email_address,
+      service:   params.custom_str2,
+      pickup:    params.custom_str3,
+      dropoff:   params.custom_str4,
+      date:      params.custom_str5,
     })
     // TODO: save to Supabase + send confirmation email
   }
