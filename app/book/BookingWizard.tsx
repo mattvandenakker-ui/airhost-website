@@ -912,15 +912,54 @@ function BookingApp() {
     }
   }, [currentKey, state, service, payMethod])
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (currentKey === 'review') {
       setLoading(true)
-      setTimeout(() => {
+      try {
+        const nameParts = state.details.name.trim().split(' ')
+        const firstName = nameParts[0]
+        const lastName  = nameParts.slice(1).join(' ') || '-'
+        const bookingId = 'AHB-' + Math.floor(Math.random() * 90000 + 10000)
+
+        const res = await fetch('/api/payfast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId,
+            total:        breakdown.total,
+            serviceLabel: service.title,
+            firstName,
+            lastName,
+            email:        state.details.email,
+            service:      state.service,
+            pickup:       state.pickup,
+            dropoff:      state.dropoff,
+            date:         state.date?.toISOString(),
+            time:         state.time,
+            bags:         state.bags,
+            hours:        state.hours,
+          }),
+        })
+
+        const { url, data } = await res.json()
+
+        // Build and submit form to PayFast
+        const form = document.createElement('form')
+        form.method = 'POST'
+        form.action = url
+        Object.entries(data).forEach(([k, v]) => {
+          const input = document.createElement('input')
+          input.type  = 'hidden'
+          input.name  = k
+          input.value = String(v)
+          form.appendChild(input)
+        })
+        document.body.appendChild(form)
+        form.submit()
+      } catch (e) {
+        console.error('PayFast error:', e)
         setLoading(false)
-        setBookingRef('AHB-' + Math.floor(Math.random() * 90000 + 10000))
-        setDirection('fwd')
-        setStep(stepKeys.length - 1)
-      }, 1400)
+      }
       return
     }
     setDirection('fwd')
