@@ -165,9 +165,8 @@ function CalendarPicker({ value, setValue, minDate }: { value: Date; setValue: (
 }
 
 // ─── Distance pricing constants ───────────────────────────────────────────────
-const UMHLANGA_LATLNG = { lat: -29.7269, lng: 31.0824 }
-const FREE_ZONE_KM    = 5
-const RATE_PER_KM     = 20
+const FREE_ZONE_KM = 5
+const RATE_PER_KM  = 20
 
 // ─── Google Maps loader (singleton) ──────────────────────────────────────────
 let _gmReady = false
@@ -404,28 +403,17 @@ function WhereDoor({ state, set }: { state: BookingState; set: (p: Partial<Booki
       setDistLoading(true)
       setDistError(false)
       try {
-        await new Promise<void>(resolve => loadGooglePlaces(resolve))
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const dmSvc = new (window as any).google.maps.DistanceMatrixService()
-        const result = await dmSvc.getDistanceMatrix({
-          origins:      [UMHLANGA_LATLNG],
-          destinations: [state.dropoff],
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          travelMode:   (window as any).google.maps.TravelMode.DRIVING,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          unitSystem:   (window as any).google.maps.UnitSystem.METRIC,
-        })
-        const el = result?.rows?.[0]?.elements?.[0]
-        if (el?.status === 'OK') {
-          const km  = Math.round((el.distance.value / 1000) * 10) / 10
-          const fee = km <= FREE_ZONE_KM ? 0 : Math.round(km * RATE_PER_KM)
-          setRef.current({ distanceKm: km, deliveryFee: fee })
-        } else {
+        const res  = await fetch(`/api/distance?dest=${encodeURIComponent(state.dropoff)}`)
+        const data = await res.json()
+        if (!res.ok || data.error) {
+          console.error('[Distance]', data)
           setRef.current({ distanceKm: 0, deliveryFee: 0 })
           setDistError(true)
+        } else {
+          setRef.current({ distanceKm: data.km, deliveryFee: data.fee })
         }
       } catch (e) {
-        console.error('[Distance Matrix]', e)
+        console.error('[Distance]', e)
         setRef.current({ distanceKm: 0, deliveryFee: 0 })
         setDistError(true)
       } finally {
