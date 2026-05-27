@@ -18,6 +18,7 @@ interface BookingState {
   direction: 'to' | 'from'; date: Date; time: string; endDate: Date; endTime: string
   bags: Bags; hours: number; extras: string[]
   details: Details; recipient: { name: string; phone: string }; insurance: boolean
+  distanceKm: number; deliveryFee: number
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -162,6 +163,11 @@ function CalendarPicker({ value, setValue, minDate }: { value: Date; setValue: (
     </div>
   )
 }
+
+// ─── Distance pricing constants ───────────────────────────────────────────────
+const UMHLANGA_LATLNG = { lat: -29.7269, lng: 31.0824 }
+const FREE_ZONE_KM    = 5
+const RATE_PER_KM     = 20
 
 // ─── Google Maps loader (singleton) ──────────────────────────────────────────
 let _gmReady = false
@@ -381,6 +387,57 @@ function WhereAirport({ state, set }: { state: BookingState; set: (p: Partial<Bo
 }
 
 function WhereDoor({ state, set }: { state: BookingState; set: (p: Partial<BookingState>) => void }) {
+  const [distLoading, setDistLoading] = useState(false)
+  const [distError, setDistError]     = useState(false)
+  const setRef    = useRef(set)
+  const debounRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  setRef.current  = set
+
+  useEffect(() => {
+    if (!state.pickup || !state.dropoff) {
+      setRef.current({ distanceKm: 0, deliveryFee: 0 })
+      setDistError(false)
+      return
+    }
+    if (debounRef.current) clearTimeout(debounRef.current)
+    debounRef.current = setTimeout(async () => {
+      setDistLoading(true)
+      setDistError(false)
+      try {
+        await new Promise<void>(resolve => loadGooglePlaces(resolve))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const dmSvc = new (window as any).google.maps.DistanceMatrixService()
+        const result = await dmSvc.getDistanceMatrix({
+          origins:      [UMHLANGA_LATLNG],
+          destinations: [state.dropoff],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          travelMode:   (window as any).google.maps.TravelMode.DRIVING,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          unitSystem:   (window as any).google.maps.UnitSystem.METRIC,
+        })
+        const el = result?.rows?.[0]?.elements?.[0]
+        if (el?.status === 'OK') {
+          const km  = Math.round((el.distance.value / 1000) * 10) / 10
+          const fee = km <= FREE_ZONE_KM ? 0 : Math.round(km * RATE_PER_KM)
+          setRef.current({ distanceKm: km, deliveryFee: fee })
+        } else {
+          setRef.current({ distanceKm: 0, deliveryFee: 0 })
+          setDistError(true)
+        }
+      } catch (e) {
+        console.error('[Distance Matrix]', e)
+        setRef.current({ distanceKm: 0, deliveryFee: 0 })
+        setDistError(true)
+      } finally {
+        setDistLoading(false)
+      }
+    }, 800)
+    return () => { if (debounRef.current) clearTimeout(debounRef.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.pickup, state.dropoff])
+
+  const showDist = !distLoading && !distError && state.distanceKm > 0
+
   return (
     <div>
       <h1 className="step-title">Where shall we collect?</h1>
@@ -388,6 +445,26 @@ function WhereDoor({ state, set }: { state: BookingState; set: (p: Partial<Booki
       <MapTile />
       <AddressInput label="Pickup"   value={state.pickup}  onChange={v => set({ pickup: v })}  placeholder="Where should we pick up?" />
       <AddressInput label="Drop-off" value={state.dropoff} onChange={v => set({ dropoff: v })} placeholder="Where should we deliver?" color="var(--sky)" />
+      {distLoading && (
+        <div className="dist-indicator">Calculating distance…</div>
+      )}
+      {showDist && (
+        <div className={'dist-indicator' + (state.deliveryFee === 0 ? ' free' : '')}>
+          <Ico.Pin n={14} />
+          <span>
+            {state.distanceKm} km from uMhlanga ·{' '}
+            {state.deliveryFee === 0
+              ? 'Free delivery'
+              : `R${state.deliveryFee} delivery fee (R${RATE_PER_KM}/km)`}
+          </span>
+        </div>
+      )}
+      {distError && (
+        <div className="dist-indicator error">
+          <Ico.Pin n={14} />
+          <span>Could not calculate distance — delivery fee confirmed at booking.</span>
+        </div>
+      )}
       <div className="service-area-note">
         <Ico.Pin n={14} />
         <span>Outside uMhlanga? WhatsApp us — we may still be able to help on a custom route.</span>
@@ -820,6 +897,7 @@ function BookingApp() {
     bags: { S: 1, M: 0, L: 0 }, hours: 1, extras: [],
     details: { name: '', phone: '', email: '', whatsapp: true, airline: '', flight: '' },
     recipient: { name: '', phone: '' }, insurance: false,
+    distanceKm: 0, deliveryFee: 0,
   })
   const set = (patch: Partial<BookingState>) => setState(s => ({ ...s, ...patch }))
 
@@ -857,9 +935,18 @@ function BookingApp() {
         base += extra
       }
     } else {
-      // door-to-door: R250 flat collection + per-size per-bag fee
-      lines.push({ label: 'Collection & drop-off', amount: 250 })
-      base += 250
+      // door-to-door: distance-based delivery fee + per-size per-bag handling
+      const km  = state.distanceKm
+      const fee = state.deliveryFee
+      if (km > 0) {
+        lines.push({
+          label: fee === 0
+            ? `Delivery · ${km} km · within free zone`
+            : `Delivery · ${km} km × R${RATE_PER_KM}/km`,
+          amount: fee,
+        })
+        base += fee
+      }
       SIZES.forEach(s => {
         const qty = bags[s.id] || 0
         if (qty > 0) {

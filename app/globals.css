@@ -721,6 +721,14 @@
 .service-area-note { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; padding: 12px 14px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.22); border-radius: 12px; font-size: 12.5px; color: #92400e; line-height: 1.45; }
 .service-area-note svg { flex-shrink: 0; margin-top: 2px; color: #b45309; }
 
+/* ── Distance indicator (WhereDoor) ── */
+.dist-indicator { display: flex; align-items: center; gap: 8px; margin: 8px 0; padding: 10px 14px; background: rgba(13,31,60,0.04); border: 1px solid var(--navy-08); border-radius: 12px; font-size: 12.5px; color: var(--navy-50); }
+.dist-indicator.free { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.28); color: #065f46; }
+.dist-indicator.free svg { color: #059669; }
+.dist-indicator.error { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.22); color: #92400e; }
+.dist-indicator.error svg { color: #b45309; }
+.dist-indicator svg { flex-shrink: 0; }
+
 /* ── Suggestions enhancements ── */
 .suggestions-header { padding: 10px 14px 6px; font-size: 11px; color: var(--navy-50); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: var(--navy-04); border-bottom: 1px solid var(--navy-08); }
 .suggestion.out-of-area .ic { background: rgba(245,158,11,0.12); color: #b45309; }
