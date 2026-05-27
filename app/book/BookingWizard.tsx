@@ -406,7 +406,7 @@ function WhereDoor({ state, set }: { state: BookingState; set: (p: Partial<Booki
         const res  = await fetch(`/api/distance?dest=${encodeURIComponent(state.dropoff)}`)
         const data = await res.json()
         if (!res.ok || data.error) {
-          console.error('[Distance]', data)
+          console.error('[Distance] error:', JSON.stringify(data))
           setRef.current({ distanceKm: 0, deliveryFee: 0 })
           setDistError(true)
         } else {
