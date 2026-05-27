@@ -165,8 +165,18 @@ function CalendarPicker({ value, setValue, minDate }: { value: Date; setValue: (
 }
 
 // ─── Distance pricing constants ───────────────────────────────────────────────
-const FREE_ZONE_KM = 5
-const RATE_PER_KM  = 20
+const UMHLANGA_LATLNG = { lat: -29.7269, lng: 31.0824 }
+const FREE_ZONE_KM    = 5
+const RATE_PER_KM     = 20
+
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371
+  const toRad = (d: number) => d * Math.PI / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLng = toRad(b.lng - a.lng)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.asin(Math.sqrt(h))
+}
 
 // ─── Google Maps loader (singleton) ──────────────────────────────────────────
 let _gmReady = false
@@ -187,15 +197,18 @@ function loadGooglePlaces(onReady: () => void) {
 // ─── Address Input ────────────────────────────────────────────────────────────
 const SERVICE_AREA_RE = /umhlanga|la lucia|ballito|salt rock|tongaat|durban|kwazulu|kzn|king shaka|phoenix|la mercy|umdloti|westbrook/i
 
-interface PlacePrediction { description: string; outOfArea: boolean }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface PlacePrediction { description: string; outOfArea: boolean; raw: any }
 
-function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocean)' }: { value: string; onChange: (v: string) => void; placeholder: string; label: string; color?: string }) {
+function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocean)', onLocationSelect }: {
+  value: string; onChange: (v: string) => void; placeholder: string; label: string; color?: string
+  onLocationSelect?: (lat: number, lng: number) => void
+}) {
   const [focused, setFocused] = useState(false)
   const [results, setResults] = useState<PlacePrediction[]>([])
   const [loading, setLoading] = useState(false)
   const [gmReady, setGmReady] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
 
   useEffect(() => { loadGooglePlaces(() => setGmReady(true)) }, [])
 
@@ -216,13 +229,29 @@ function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocea
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setResults((suggestions || []).map((s: any) => {
           const desc = s.placePrediction?.text?.text || ''
-          return { description: desc, outOfArea: !SERVICE_AREA_RE.test(desc) }
+          return { description: desc, outOfArea: !SERVICE_AREA_RE.test(desc), raw: s }
         }))
       } catch (e) { console.error('[Places]', e); setResults([]) }
       finally { setLoading(false) }
     }, 300)
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
   }, [value, focused, gmReady])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const selectSuggestion = async (r: PlacePrediction) => {
+    onChange(r.description)
+    setFocused(false)
+    setResults([])
+    if (onLocationSelect && r.raw?.placePrediction) {
+      try {
+        const place = r.raw.placePrediction.toPlace()
+        await place.fetchFields({ fields: ['location'] })
+        const lat = place.location?.lat()
+        const lng = place.location?.lng()
+        if (lat !== undefined && lng !== undefined) onLocationSelect(lat, lng)
+      } catch (e) { console.error('[Places location]', e) }
+    }
+  }
 
   const showFamiliar = focused && !value.trim()
 
@@ -254,7 +283,7 @@ function AddressInput({ value, onChange, placeholder, label, color = 'var(--ocea
         <div className="suggestions">
           {results.map(r => (
             <button key={r.description} className={'suggestion' + (r.outOfArea ? ' out-of-area' : '')}
-              onMouseDown={e => { e.preventDefault(); onChange(r.description); setFocused(false); setResults([]) }}>
+              onMouseDown={e => { e.preventDefault(); selectSuggestion(r) }}>
               <span className="ic"><Ico.Pin n={14} /></span>
               <div>
                 <div className="name">{r.description}{r.outOfArea && <span className="oos-tag">Outside service area</span>}</div>
@@ -386,56 +415,24 @@ function WhereAirport({ state, set }: { state: BookingState; set: (p: Partial<Bo
 }
 
 function WhereDoor({ state, set }: { state: BookingState; set: (p: Partial<BookingState>) => void }) {
-  const [distLoading, setDistLoading] = useState(false)
-  const [distError, setDistError]     = useState(false)
-  const setRef    = useRef(set)
-  const debounRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  setRef.current  = set
+  const handleDropoffLocation = (lat: number, lng: number) => {
+    const km  = Math.round(haversineKm(UMHLANGA_LATLNG, { lat, lng }) * 10) / 10
+    const fee = km <= FREE_ZONE_KM ? 0 : Math.round(km * RATE_PER_KM)
+    set({ distanceKm: km, deliveryFee: fee })
+  }
 
-  useEffect(() => {
-    if (!state.pickup || !state.dropoff) {
-      setRef.current({ distanceKm: 0, deliveryFee: 0 })
-      setDistError(false)
-      return
-    }
-    if (debounRef.current) clearTimeout(debounRef.current)
-    debounRef.current = setTimeout(async () => {
-      setDistLoading(true)
-      setDistError(false)
-      try {
-        const res  = await fetch(`/api/distance?dest=${encodeURIComponent(state.dropoff)}`)
-        const data = await res.json()
-        if (!res.ok || data.error) {
-          console.error('[Distance] error:', JSON.stringify(data))
-          setRef.current({ distanceKm: 0, deliveryFee: 0 })
-          setDistError(true)
-        } else {
-          setRef.current({ distanceKm: data.km, deliveryFee: data.fee })
-        }
-      } catch (e) {
-        console.error('[Distance]', e)
-        setRef.current({ distanceKm: 0, deliveryFee: 0 })
-        setDistError(true)
-      } finally {
-        setDistLoading(false)
-      }
-    }, 800)
-    return () => { if (debounRef.current) clearTimeout(debounRef.current) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.pickup, state.dropoff])
-
-  const showDist = !distLoading && !distError && state.distanceKm > 0
+  const showDist = state.distanceKm > 0
 
   return (
     <div>
       <h1 className="step-title">Where shall we collect?</h1>
       <p className="step-sub">Search any South African address — we currently operate inside uMhlanga and the immediate KZN coast.</p>
       <MapTile />
-      <AddressInput label="Pickup"   value={state.pickup}  onChange={v => set({ pickup: v })}  placeholder="Where should we pick up?" />
-      <AddressInput label="Drop-off" value={state.dropoff} onChange={v => set({ dropoff: v })} placeholder="Where should we deliver?" color="var(--sky)" />
-      {distLoading && (
-        <div className="dist-indicator">Calculating distance…</div>
-      )}
+      <AddressInput label="Pickup" value={state.pickup} onChange={v => set({ pickup: v })} placeholder="Where should we pick up?" />
+      <AddressInput label="Drop-off" value={state.dropoff}
+        onChange={v => { set({ dropoff: v, distanceKm: 0, deliveryFee: 0 }) }}
+        onLocationSelect={handleDropoffLocation}
+        placeholder="Where should we deliver?" color="var(--sky)" />
       {showDist && (
         <div className={'dist-indicator' + (state.deliveryFee === 0 ? ' free' : '')}>
           <Ico.Pin n={14} />
@@ -445,12 +442,6 @@ function WhereDoor({ state, set }: { state: BookingState; set: (p: Partial<Booki
               ? 'Free delivery'
               : `R${state.deliveryFee} delivery fee (R${RATE_PER_KM}/km)`}
           </span>
-        </div>
-      )}
-      {distError && (
-        <div className="dist-indicator error">
-          <Ico.Pin n={14} />
-          <span>Could not calculate distance — delivery fee confirmed at booking.</span>
         </div>
       )}
       <div className="service-area-note">
